@@ -1,44 +1,11 @@
 package regions;
 
-public class Quadtree 
+public class Quadtree extends Tree
 {
 	//STATIC
 	//================================================================== 
 	
-	public static class Node
-	{
-		public final boolean 	full;
-		public final Node[] 	nodes;
-
-		public Node(boolean full)
-		{
-			this.full 	= full;	
-			this.nodes 	= new Node[0];
-		}
-		
-		public Node(Node[] nodes)
-		{
-			this.full 	= false;
-			this.nodes 	= nodes;
-		}
-		
-	}
-	
-	
-	
-	private static class IntReference
-	{
-		int ref;
-		
-		IntReference(int i)
-		{
-			this.ref = i;
-		}
-	}
-	
-	
-	
-	private static Node parseBytes(IntReference index, byte[] bytes, int parentByte)
+	Node parseBytes(IntReference index, byte[] bytes, int parentByte)
 	{
 		if (parentByte == 0b00000010) return new Node(true);
 		if (parentByte == 0b00000001) return new Node(false);
@@ -57,26 +24,11 @@ public class Quadtree
 						});
 	}
 	
-	
-	
-	public static Node parseBytes(int startAtIndex, byte[] bytes)
-	{
-		return parseBytes	(	new IntReference(startAtIndex), 	bytes, 0	);
-	}
-	public static Node parseBytes(byte[] bytes)
-	{
-		return parseBytes	(	new IntReference(0), 				bytes, 0	);
-	}
-	
 	//INSTANCE
 	//==================================================================
 	
-	public final Owner 	owner;
-	public final Node 	root;
-	
 	public Quadtree(Owner owner, byte[] bytes)
 	{
-		this.owner 	= owner;
-		this.root 	= parseBytes(bytes);
+		super(owner, bytes);
 	}
 }
