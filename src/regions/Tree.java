@@ -1,5 +1,12 @@
 package regions;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
 /**
  * This is a superclass for octrees, quadtrees, and any other spatial trees.<p>
  * 
@@ -13,16 +20,13 @@ package regions;
  * smallest box your shape will fit inside of). This box outlines the minimum and maximum 
  * x, y, and z dimensions of the shape.<p>
  * 
- * Next, you divide this cube evenly into 8 sections (2 x 2 x 2) and determine which sections 
- * your shape fills, which ones it leaves empty, and which ones your shape partially 
- * intersects.<p>
+ * Next, you divide this cube evenly into 8 more cubes, determining which of these cubes
+ * your shape fills, which it leaves empty, and which it intersects. Intersected cubes are 
+ * divided again into 8 more cubes, and the process repeats until only completely full 
+ * (<tt>true</tt>) and completely empty (<tt>false</tt>) cubes remain.<p>
  * 
- * Intersected cubes are divided again into 8 subsections, and the process repeats until you 
- * have divided and subdivided your bounding box into <i>only</i> full (<tt>true</tt>) and
- * empty (<tt>false</tt>) cubes<p>
- * 
- * Then, given any point in space, you can quickly determine whether the point is inside or 
- * outside your shape by navigating the tree to reach the smallest cube your point is in.
+ * With this tree, you can quickly determine whether any arbitrary point is inside or outside
+ * your shape by navigating the tree to reach the smallest cube containing your point.
  * 
  * @author Kevin Mathewson
  *
@@ -52,10 +56,18 @@ public abstract class Tree
 	}
 	
 	
+	
+	/*----------------------------------------------------
+	------------------------------------------------------
+		FROM BYTES
+	------------------------------------------------------
+	----------------------------------------------------*/
+	
+	
 	/**
-	 * Defines an object containing a single int field. Used by the <tt>parseBytes()</tt> 
-	 * method to track its current <tt>index</tt> in the byte array. <tt>Node parseBytes()</tt> 
-	 * is a nested, self-calling method, and <tt>index</tt> increments with each call.
+	 * Defines an object containing a single int field. Used by the nested, recursive method 
+	 * <tt>Node parseBytes()</tt>, so all the child-calls and parent-calls of the method can
+	 * refer to the same integer, representing the current index within the parsed byte array.
 	 */
 	static final class IntReference
 	{
@@ -118,6 +130,119 @@ public abstract class Tree
 		return parseBytes	(	new IntReference(0), 				bytes, 0	);
 	}
 	
+	
+	
+	/*----------------------------------------------------
+	------------------------------------------------------
+		TO BYTES
+	------------------------------------------------------
+	----------------------------------------------------*/
+	
+	
+	/**
+	 * Get the 2-bit representation of this node. Used in <tt>{@link #getByte(Node node)}</tt> 
+	 * to construct the parent byte from the bits of four child nodes, xx xx xx xx.<p>
+	 * 
+	 * @param node 			the node to evaluate
+	 * @return				2 (full), 1 (empty), or 0 (has children)
+	 */
+	public static byte getBits(Node node)
+	{
+		return 	node.full ?	(byte) 2 : node.children.length == 0 ? 	(byte) 1 : (byte) 0;
+	}
+	
+	
+	/**
+	 * Get byte representation for four child nodes. Returns the following:<p>
+	 * 
+	 * <tt>	{@link #getBits(Node node) getBits(a)} << 6 | 	</tt><p>
+	 * <tt>	{@link #getBits(Node node) getBits(b)} << 4 | 	</tt><p>
+	 * <tt>	{@link #getBits(Node node) getBits(c)} << 2 | 	</tt><p>
+	 * <tt>	{@link #getBits(Node node) getBits(d)}			</tt>
+	 * 
+	 * @param a 			1st child node
+	 * @param b 			2nd child node
+	 * @param c 			3rd child node
+	 * @param d 			4th child node
+	 * @see 				{@link #getBits(Node node)}
+	 */
+	public static byte getByte(Node a, Node b, Node c, Node d)
+	{
+		return (byte) (	getBits(a) << 6 | 
+						getBits(b) << 4 | 
+						getBits(c) << 2 | 
+						getBits(d)
+						);
+	}
+	
+	
+	/**
+	 * Parses the tree rooted at this node, appending in depth-first order the result of invoking
+	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
+	 * node in the tree, skipping childless nodes.<p>
+	 * 
+	 * NOTE: assumes an OutputStream that appends with each write.
+	 * 
+	 * @param node 			the node to be parsed
+	 * @return 				a byte array representing the node and all its child nodes
+	 */
+	public static void writeBytes(Node node, OutputStream output)
+	{
+		try 
+		{
+			output.write(	getByte(	node.children[0],
+										node.children[1],
+										node.children[2],
+										node.children[3]	));
+		} 
+		catch (IOException e) { e.printStackTrace(); }
+		for (Node child : node.children) 
+				writeBytes(child, output);
+	}
+	
+	
+	/**
+	 * Parses the tree rooted at this node, appending in depth-first order the result of invoking
+	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
+	 * node in the tree, skipping childless nodes.<p>
+	 * 
+	 * Writes to a ByteArrayOutputStream.
+	 * 
+	 * @param node 			the root node of the tree to be parsed
+	 * @return 				a byte array representing the root node and all its child nodes
+	 */
+	public static byte[] getBytes(Node node)
+	{
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		writeBytes(node, output);
+		return output.toByteArray();
+	}
+	
+	
+	/**
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt>, using a FileOutputStream of the
+	 * given file as the OutputStream argument.
+	 * 
+	 * @param node			the root node of the tree to be parsed
+	 * @param destination	the file to save to
+	 */
+	public static void saveToFile(Node node, File destination)
+	{
+		try 
+		{
+			FileOutputStream output = new FileOutputStream (destination, true);
+			writeBytes(node, output);
+			output.close();
+		} 
+		catch (FileNotFoundException e) { e.printStackTrace(); } 
+		catch (IOException e) 			{ e.printStackTrace(); }
+	}
+	
+	
+	
+	/*----------------------------------------------------
+		CONSTRUCTOR
+	----------------------------------------------------*/
 	
 	
 	public final Owner 	owner;

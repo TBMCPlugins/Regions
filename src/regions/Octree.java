@@ -2,7 +2,7 @@ package regions;
 
 public class Octree extends Tree
 {
-	//STATIC
+	//LOADING AND SAVING
 	//================================================================== 
 	
 	Node parseBytes(IntReference index, byte[] bytes, int parentByte)
@@ -18,19 +18,19 @@ public class Octree extends Tree
 				(
 						new Node[]
 						{
-							parseBytes(index, bytes, (a >> 6 & 3)),
-							parseBytes(index, bytes, (a >> 4 & 3)),
-							parseBytes(index, bytes, (a >> 2 & 3)),
-							parseBytes(index, bytes, (a 	 & 3)),
+							parseBytes(index, bytes, (a >>> 6 & 3)),
+							parseBytes(index, bytes, (a >>> 4 & 3)),
+							parseBytes(index, bytes, (a >>> 2 & 3)),
+							parseBytes(index, bytes, (a 	  & 3)),
 							
-							parseBytes(index, bytes, (b >> 6 & 3)),
-							parseBytes(index, bytes, (b >> 4 & 3)),
-							parseBytes(index, bytes, (b >> 2 & 3)),
-							parseBytes(index, bytes, (b 	 & 3))
+							parseBytes(index, bytes, (b >>> 6 & 3)),
+							parseBytes(index, bytes, (b >>> 4 & 3)),
+							parseBytes(index, bytes, (b >>> 2 & 3)),
+							parseBytes(index, bytes, (b 	  & 3))
 						});
 	}
 	
-	//INSTANCE
+	//CONSTRUCTOR
 	//==================================================================
 	
 	public Octree(Owner owner, byte[] bytes)

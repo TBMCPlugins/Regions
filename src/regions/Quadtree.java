@@ -2,7 +2,7 @@ package regions;
 
 public class Quadtree extends Tree
 {
-	//STATIC
+	//LOADING AND SAVING
 	//================================================================== 
 	
 	Node parseBytes(IntReference index, byte[] bytes, int parentByte)
@@ -17,14 +17,14 @@ public class Quadtree extends Tree
 				(
 						new Node[]
 						{
-							parseBytes(index, bytes, (a >> 6 & 3)),
-							parseBytes(index, bytes, (a >> 4 & 3)),
-							parseBytes(index, bytes, (a >> 2 & 3)),
-							parseBytes(index, bytes, (a 	 & 3))
+							parseBytes(index, bytes, (a >>> 6 & 3)),
+							parseBytes(index, bytes, (a >>> 4 & 3)),
+							parseBytes(index, bytes, (a >>> 2 & 3)),
+							parseBytes(index, bytes, (a 	  & 3))
 						});
 	}
 	
-	//INSTANCE
+	//CONSTRUCTOR
 	//==================================================================
 	
 	public Quadtree(Owner owner, byte[] bytes)
