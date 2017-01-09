@@ -1,9 +1,15 @@
 package regions;
 
+import java.io.IOException;
+import java.io.OutputStream;
+
 public class Quadtree extends Tree
 {
-	//LOADING AND SAVING
-	//================================================================== 
+	/*----------------------------------------------------
+	------------------------------------------------------
+		FROM BYTES
+	------------------------------------------------------
+	----------------------------------------------------*/
 	
 	Node parseBytes(IntReference index, byte[] bytes, int parentByte)
 	{
@@ -24,8 +30,32 @@ public class Quadtree extends Tree
 						});
 	}
 	
-	//CONSTRUCTOR
-	//==================================================================
+	/*----------------------------------------------------
+	------------------------------------------------------
+		TO BYTES
+	------------------------------------------------------
+	----------------------------------------------------*/
+	
+	public void writeBytes(Node node, OutputStream output)
+	{
+		try 
+		{
+			output.write(	getByte(	node.children[0],
+										node.children[1],
+										node.children[2],
+										node.children[3]	
+										));
+		} 
+		catch (IOException e) { e.printStackTrace(); }
+		for (Node child : node.children) 
+				writeBytes(child, output);
+	}
+	
+	/*----------------------------------------------------
+	------------------------------------------------------
+		CONSTRUCTORS
+	------------------------------------------------------
+	----------------------------------------------------*/
 	
 	public Quadtree(Owner owner, byte[] bytes)
 	{

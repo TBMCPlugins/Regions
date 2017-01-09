@@ -171,12 +171,15 @@ public abstract class Tree
 		return (byte) (	getBits(a) << 6 | 
 						getBits(b) << 4 | 
 						getBits(c) << 2 | 
-						getBits(d)
+						getBits(d)			
 						);
 	}
 	
 	
 	/**
+	 * An abstract method, implemented slightly differently by octrees and quadtrees because 
+	 * octrees have 8 branches per node and quadtrees only 4.<p>
+	 * 
 	 * Parses the tree rooted at this node, appending in depth-first order the result of invoking
 	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
 	 * node in the tree, skipping childless nodes.<p>
@@ -186,19 +189,7 @@ public abstract class Tree
 	 * @param node 			the node to be parsed
 	 * @return 				a byte array representing the node and all its child nodes
 	 */
-	public static void writeBytes(Node node, OutputStream output)
-	{
-		try 
-		{
-			output.write(	getByte(	node.children[0],
-										node.children[1],
-										node.children[2],
-										node.children[3]	));
-		} 
-		catch (IOException e) { e.printStackTrace(); }
-		for (Node child : node.children) 
-				writeBytes(child, output);
-	}
+	public abstract void writeBytes(Node node, OutputStream output);
 	
 	
 	/**
@@ -211,7 +202,7 @@ public abstract class Tree
 	 * @param node 			the root node of the tree to be parsed
 	 * @return 				a byte array representing the root node and all its child nodes
 	 */
-	public static byte[] getBytes(Node node)
+	public byte[] getBytes(Node node)
 	{
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
 		writeBytes(node, output);
@@ -226,7 +217,7 @@ public abstract class Tree
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
 	 */
-	public static void saveToFile(Node node, File destination)
+	public void saveToFile(Node node, File destination)
 	{
 		try 
 		{
@@ -241,7 +232,9 @@ public abstract class Tree
 	
 	
 	/*----------------------------------------------------
+	------------------------------------------------------
 		CONSTRUCTOR
+	------------------------------------------------------
 	----------------------------------------------------*/
 	
 	
