@@ -1,7 +1,10 @@
 package regions;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -46,11 +49,15 @@ public abstract class Tree
 			this.full 		= full;	
 			this.children 	= new Node[0];
 		}
-		
 		public Node(Node[] nodes)
 		{
 			this.full 		= false;
 			this.children 	= nodes;
+		}
+		public Node()
+		{
+			this.full 		= false;
+			this.children 	= new Node[0];
 		}
 		
 	}
@@ -65,69 +72,58 @@ public abstract class Tree
 	
 	
 	/**
-	 * Defines an object containing a single int field. Used by the nested, recursive method 
-	 * <tt>Node parseBytes()</tt>, so all the child-calls and parent-calls of the method can
-	 * refer to the same integer, representing the current index within the parsed byte array.
-	 */
-	static final class IntReference
-	{
-		int ref;
-		
-		IntReference(int i)
-		{
-			this.ref = i;
-		}
-	}
-	
-	
-	/**
 	 * An abstract method, implemented slightly differently by octrees and quadtrees because 
 	 * octrees have 8 branches per node and quadtrees only 4.<p>
 	 * 
-	 * Given a byte array, interprets each byte as four 2-bit values, where 00 = partially full,
-	 * 01 = empty (<tt>false</tt>) and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes 
-	 * each, Quadtree nodes use 1 byte each. Assumes a depth-first arrangement.<p>
+	 * Interprets each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
+	 * and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes each, Quadtree nodes use 1 byte each. 
+	 * Assumes a depth-first arrangement.<p>
 	 * 
-	 * @param index			current position in the byte array
-	 * @param bytes 		byte array, presumably read from a binary file
-	 * @param parentByte 	the 2-bit value (00000010, 00000001 or 00000000)
+	 * @param input 		DataInputStream of source bytes
+	 * @param parentBits 	the 2-bit value (00, 01, or 10)
 	 * @return 				a new Node
+	 * @throws 				IOException 
 	 */
-	abstract Node parseBytes(IntReference index, byte[] bytes, int parentByte);
+	public abstract Node parseBytes(DataInputStream input, int parentBits) throws IOException;
 	
 	
 	/**
-	 * A simplified public alias for the package-private abstract method 
-	 * <tt>Node parseBytes(IntReference index, byte[] bytes, int parentByte)</tt><p>
+	 * Interprets each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
+	 * and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes each, Quadtree nodes use 1 byte each. 
+	 * Assumes a depth-first arrangement.<p>
 	 * 
-	 * Given a byte array, interprets each byte as four 2-bit values, where 00 = partially full,
-	 * 01 = empty (<tt>false</tt>) and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes 
-	 * each, Quadtree nodes use 1 byte each. Assumes a depth-first arrangement.<p>
-	 * 
-	 * @param startAtIndex	where in the byte[] array to begin
-	 * @param bytes			byte array, presumably read from a binary file
+	 * @param input 		DataInputStream containing source bytes
 	 * @return 				a new Node
 	 */
-	public Node parseBytes(int startAtIndex, byte[] bytes)
+	public Node parseBytes(DataInputStream input)
 	{
-		return parseBytes	(	new IntReference(startAtIndex), 	bytes, 0	);
+		try 					{ return parseBytes(input, 0); 	} 
+		catch (IOException e) 	{ return new Node();			}
 	}
 	
 	
 	/**
-	 * A simplified public alias for the package-private abstract method 
-	 * <tt>Node parseBytes(IntReference index, byte[] bytes, int parentByte)</tt><p>
+	 * Interprets each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
+	 * and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes each, Quadtree nodes use 1 byte each. 
+	 * Assumes a depth-first arrangement.<p>
 	 * 
-	 * Given a byte array, interprets each byte as four 2-bit values, where 00 = partially full,
-	 * 01 = empty (<tt>false</tt>) and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes 
-	 * each, Quadtree nodes use 1 byte each. Assumes a depth-first arrangement.<p>
-	 * 
-	 * @param bytes			byte array, presumably read from a binary file
+	 * @param file			binary file to read bytes from
 	 * @return 				a new Node
 	 */
-	public Node parseBytes(byte[] bytes)
+	public Node parseBytes(File file)
 	{
-		return parseBytes	(	new IntReference(0), 				bytes, 0	);
+		if (file.getUsableSpace() == 0) 
+		{
+			return new Node();
+		}
+		try 
+		{
+			return parseBytes(new DataInputStream(new BufferedInputStream(new FileInputStream(file))));
+		} 
+		catch (FileNotFoundException e) 
+		{ 
+			return new Node();
+		}
 	}
 	
 	
@@ -192,15 +188,31 @@ public abstract class Tree
 	public abstract void writeBytes(Node node, OutputStream output);
 	
 	
+	
+	/*-------------------------------------
+		OVERLOADS : getBytes()
+	-------------------------------------*/
 	/**
-	 * Parses the tree rooted at this node, appending in depth-first order the result of invoking
+	 * Parses the tree from the root, appending in depth-first order the result of invoking
 	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
 	 * node in the tree, skipping childless nodes.<p>
 	 * 
-	 * Writes to a ByteArrayOutputStream.
+	 * @return 				byte array representing the root node and all its child nodes
+	 */
+	public byte[] getBytes()
+	{
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		writeBytes(root, output);
+		return output.toByteArray();
+	}
+	
+	/**
+	 * Parses the tree from this node, appending in depth-first order the result of invoking
+	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
+	 * node in the tree, skipping childless nodes.<p>
 	 * 
-	 * @param node 			the root node of the tree to be parsed
-	 * @return 				a byte array representing the root node and all its child nodes
+	 * @param node 			the node to parse from
+	 * @return 				byte array representing the root node and all its child nodes
 	 */
 	public byte[] getBytes(Node node)
 	{
@@ -209,10 +221,104 @@ public abstract class Tree
 		return output.toByteArray();
 	}
 	
+	/**
+	 * Parses the tree from the root, appending in depth-first order the result of invoking
+	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
+	 * node in the tree, skipping childless nodes.<p>
+	 * 
+	 * Writes to the given ByteArrayOutputStream.
+	 * 
+	 * @param output 		the ByteArrayOutputStream to write to
+	 * @return 				byte array representing the root node and all its child nodes
+	 */
+	public byte[] getBytes(ByteArrayOutputStream output)
+	{
+		writeBytes(root, output);
+		return output.toByteArray();
+	}
 	
 	/**
-	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt>, using a FileOutputStream of the
-	 * given file as the OutputStream argument.
+	 * Parses the tree from this node, appending in depth-first order the result of invoking
+	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
+	 * node in the tree, skipping childless nodes.<p>
+	 * 
+	 * Writes to the given ByteArrayOutputStream.
+	 * 
+	 * @param node 			the node to parse from
+	 * @param output 		the ByteArrayOutputStream to write to
+	 * @return 				byte array representing the root node and all its child nodes
+	 */
+	public byte[] getBytes(Node node, ByteArrayOutputStream output)
+	{
+		writeBytes(node, output);
+		return output.toByteArray();
+	}
+	
+	
+	
+	/*-------------------------------------
+		OVERLOADS : saveToFile()
+	-------------------------------------*/
+	/**
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the root node, using a 
+	 * FileOutputStream of the source file as the OutputStream argument.
+	 * 
+	 * @param node			the root node of the tree to be parsed
+	 * @param destination	the file to save to
+	 */
+	public void saveToFile()
+	{
+		try 
+		{
+			FileOutputStream output = new FileOutputStream (file, true);
+			writeBytes(root, output);
+			output.close();
+		} 
+		catch (FileNotFoundException e) { e.printStackTrace(); } 
+		catch (IOException e) 			{ e.printStackTrace(); }
+	}
+	
+	/**
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the given node, using a 
+	 * FileOutputStream of the source file as the OutputStream argument.
+	 * 
+	 * @param node			the root node of the tree to be parsed
+	 * @param destination	the file to save to
+	 */
+	public void saveToFile(Node node)
+	{
+		try 
+		{
+			FileOutputStream output = new FileOutputStream (file, true);
+			writeBytes(node, output);
+			output.close();
+		} 
+		catch (FileNotFoundException e) { e.printStackTrace(); } 
+		catch (IOException e) 			{ e.printStackTrace(); }
+	}
+	
+	/**
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the root node, using a 
+	 * FileOutputStream of the given file as the OutputStream argument.
+	 * 
+	 * @param node			the root node of the tree to be parsed
+	 * @param destination	the file to save to
+	 */
+	public void saveToFile(File destination)
+	{
+		try 
+		{
+			FileOutputStream output = new FileOutputStream (destination, true);
+			writeBytes(root, output);
+			output.close();
+		} 
+		catch (FileNotFoundException e) { e.printStackTrace(); } 
+		catch (IOException e) 			{ e.printStackTrace(); }
+	}
+	
+	/**
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the given node, using a 
+	 * FileOutputStream of the given file as the OutputStream argument.
 	 * 
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
@@ -238,12 +344,35 @@ public abstract class Tree
 	----------------------------------------------------------------------------*/
 	
 	
-	public final Owner 	owner;
-	public final Node 	root;
+	/** 
+	 * Minimum and maximum bounds [ [min] [max] ]. 
+	 * Quadtrees store [x,z], Octrees store [x,z,y].
+	 */
+	public			int[][]		bounds;
+	/** 
+	 * Minimum and maximum bounds [ [min] [max] ]. 
+	 * Quadtrees store [x,z], Octrees store [x,z,y].<p>
+	 * 
+	 * <b>Bounds of the shape itself, 
+	 * not including empty nodes.
+	 */
+	public			int[][]		boundsTrue;
+	public final	File 		file;
+	public final	Node 		root;
+	public final	TreeEditor 	editor;
 	
-	public Tree(Owner owner, byte[] bytes)
+	public Tree(int[][] bounds, File file)
 	{
-		this.owner 	= owner;
-		this.root 	= parseBytes(bytes);
+		this.bounds	= bounds;
+		this.file	= file;
+		this.root	= parseBytes(file);
+		this.editor	= newEditor();
 	}
+	
+	/**
+	 * An abstract method, returning a new subclass-specific 
+	 * instance implementing the interface TreeEditor
+	 * @return a new TreeEditor
+	 */
+	abstract TreeEditor newEditor();
 }

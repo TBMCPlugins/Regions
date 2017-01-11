@@ -1,5 +1,7 @@
 package regions;
 
+import java.io.DataInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -11,23 +13,25 @@ public class Octree extends Tree
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/ 
 	
-	Node parseBytes(IntReference index, byte[] bytes, int parentByte)
+	public Node parseBytes(DataInputStream input, int parentByte) throws IOException
 	{
 		if (parentByte == 0b00000010) return new Node(true);
 		if (parentByte == 0b00000001) return new Node(false);
 		
-		byte a = bytes[index.ref++], 	
-			 b = bytes[index.ref++];
+		int a = input.read(), 	
+			b = input.read();
 		
-		return new Node( new Node[] {	parseBytes(index, bytes, (a >>> 6 & 3)),
-										parseBytes(index, bytes, (a >>> 4 & 3)),
-										parseBytes(index, bytes, (a >>> 2 & 3)),
-										parseBytes(index, bytes, (a 	  & 3)),
+		return a == -1 || b == -1 ?
+				new Node( false ) :
+				new Node( new Node[] {	parseBytes(input, (a >>> 6 & 3)),
+										parseBytes(input, (a >>> 4 & 3)),
+										parseBytes(input, (a >>> 2 & 3)),
+										parseBytes(input, (a	   & 3)),
 										
-										parseBytes(index, bytes, (b >>> 6 & 3)),
-										parseBytes(index, bytes, (b >>> 4 & 3)),
-										parseBytes(index, bytes, (b >>> 2 & 3)),
-										parseBytes(index, bytes, (b 	  & 3))
+										parseBytes(input, (b >>> 6 & 3)),
+										parseBytes(input, (b >>> 4 & 3)),
+										parseBytes(input, (b >>> 2 & 3)),
+										parseBytes(input, (b	   & 3))
 										});
 	}
 	
@@ -66,8 +70,12 @@ public class Octree extends Tree
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
 	
-	public Octree(Owner owner, byte[] bytes)
+	public Octree(int[][] bounds, File file, byte[] bytes)
 	{
-		super(owner, bytes);
+		super(bounds, file);
+	}
+	OctreeEditor newEditor() 
+	{
+		return new OctreeEditor(this);
 	}
 }

@@ -1,5 +1,7 @@
 package regions;
 
+import java.io.DataInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -11,17 +13,19 @@ public class Quadtree extends Tree
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
 	
-	Node parseBytes(IntReference index, byte[] bytes, int parentByte)
+	public Node parseBytes(DataInputStream input, int parentByte) throws IOException
 	{
 		if (parentByte == 0b00000010) return new Node(true);
 		if (parentByte == 0b00000001) return new Node(false);
 		
-		byte a = bytes[index.ref++];
+		int a = input.read();
 		
-		return new Node( new Node[] {	parseBytes(index, bytes, (a >>> 6 & 3)),
-										parseBytes(index, bytes, (a >>> 4 & 3)),
-										parseBytes(index, bytes, (a >>> 2 & 3)),
-										parseBytes(index, bytes, (a 	  & 3))
+		return  a == -1 ?
+				new Node( false ) :
+				new Node( new Node[] {	parseBytes(input, (a >>> 6 & 3)),
+										parseBytes(input, (a >>> 4 & 3)),
+										parseBytes(input, (a >>> 2 & 3)),
+										parseBytes(input, (a 	   & 3))
 										});
 	}
 	
@@ -54,8 +58,12 @@ public class Quadtree extends Tree
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
 	
-	public Quadtree(Owner owner, byte[] bytes)
+	public Quadtree(int[][] bounds, File file)
 	{
-		super(owner, bytes);
+		super(bounds, file);
+	}
+	public QuadtreeEditor newEditor()
+	{
+		return new QuadtreeEditor(this);
 	}
 }
