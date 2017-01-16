@@ -5,7 +5,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -54,15 +53,18 @@ public abstract class Tree
 			this.full 		= false;
 			this.children 	= nodes;
 		}
-		public Node()
-		{
-			this.full 		= false;
-			this.children 	= new Node[0];
-		}
-		
 	}
 	
 	
+	
+	/*
+	╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+	║ ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗ ║
+	║ ║																															 ║ ║
+	║ ║		BYTE CONVERSION																										 ║ ║
+	║ ║																															 ║ ║
+	║ ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ ║
+	╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------
@@ -72,12 +74,11 @@ public abstract class Tree
 	
 	
 	/**
-	 * An abstract method, implemented slightly differently by octrees and quadtrees because 
-	 * octrees have 8 branches per node and quadtrees only 4.<p>
-	 * 
-	 * Interprets each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
+	 * Reads each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
 	 * and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes each, Quadtree nodes use 1 byte each. 
 	 * Assumes a depth-first arrangement.<p>
+	 * 
+	 * Does not close the input stream.
 	 * 
 	 * @param input 		DataInputStream of source bytes
 	 * @param parentBits 	the 2-bit value (00, 01, or 10)
@@ -88,22 +89,24 @@ public abstract class Tree
 	
 	
 	/**
-	 * Interprets each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
+	 * Reads each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
 	 * and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes each, Quadtree nodes use 1 byte each. 
 	 * Assumes a depth-first arrangement.<p>
 	 * 
-	 * @param input 		DataInputStream containing source bytes
+	 * Does not close the input stream.
+	 * 
+	 * @param input 		DataInputStream of source bytes
 	 * @return 				a new Node
 	 */
 	public Node parseBytes(DataInputStream input)
 	{
 		try 					{ return parseBytes(input, 0); 	} 
-		catch (IOException e) 	{ return new Node();			}
+		catch (IOException e) 	{ return new Node(false);		}
 	}
 	
 	
 	/**
-	 * Interprets each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
+	 * Reads each byte as four 2-bit values, where 00 = partial, 01 = empty (<tt>false</tt>)
 	 * and 10 = full (<tt>true</tt>). Octree nodes use 2 bytes each, Quadtree nodes use 1 byte each. 
 	 * Assumes a depth-first arrangement.<p>
 	 * 
@@ -112,17 +115,22 @@ public abstract class Tree
 	 */
 	public Node parseBytes(File file)
 	{
-		if (file.getUsableSpace() == 0) 
+		if (file.length() == 0) 
 		{
-			return new Node();
+			return new Node(false);
 		}
 		try 
 		{
-			return parseBytes(new DataInputStream(new BufferedInputStream(new FileInputStream(file))));
+			DataInputStream input = new DataInputStream(new BufferedInputStream(new FileInputStream(file)));
+			
+			Node node = parseBytes(input);
+			
+			input.close();
+			return node;
 		} 
-		catch (FileNotFoundException e) 
+		catch (IOException e) 
 		{ 
-			return new Node();
+			return new Node(false);
 		}
 	}
 	
@@ -173,9 +181,6 @@ public abstract class Tree
 	
 	
 	/**
-	 * An abstract method, implemented slightly differently by octrees and quadtrees because 
-	 * octrees have 8 branches per node and quadtrees only 4.<p>
-	 * 
 	 * Parses the tree rooted at this node, appending in depth-first order the result of invoking
 	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
 	 * node in the tree, skipping childless nodes.<p>
@@ -207,12 +212,12 @@ public abstract class Tree
 	}
 	
 	/**
-	 * Parses the tree from this node, appending in depth-first order the result of invoking
+	 * Parses the tree below this node, appending in depth-first order the result of invoking
 	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
 	 * node in the tree, skipping childless nodes.<p>
 	 * 
 	 * @param node 			the node to parse from
-	 * @return 				byte array representing the root node and all its child nodes
+	 * @return 				byte array representing the given node and all its child nodes
 	 */
 	public byte[] getBytes(Node node)
 	{
@@ -226,32 +231,28 @@ public abstract class Tree
 	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
 	 * node in the tree, skipping childless nodes.<p>
 	 * 
-	 * Writes to the given ByteArrayOutputStream.
+	 * Writes to the given OutputStream, does not close the stream.
 	 * 
 	 * @param output 		the ByteArrayOutputStream to write to
-	 * @return 				byte array representing the root node and all its child nodes
 	 */
-	public byte[] getBytes(ByteArrayOutputStream output)
+	public void getBytes(OutputStream output)
 	{
 		writeBytes(root, output);
-		return output.toByteArray();
 	}
 	
 	/**
-	 * Parses the tree from this node, appending in depth-first order the result of invoking
+	 * Parses the tree below this node, appending in depth-first order the result of invoking
 	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
 	 * node in the tree, skipping childless nodes.<p>
 	 * 
-	 * Writes to the given ByteArrayOutputStream.
+	 * Writes to the given OutputStream, does not close the stream.
 	 * 
 	 * @param node 			the node to parse from
 	 * @param output 		the ByteArrayOutputStream to write to
-	 * @return 				byte array representing the root node and all its child nodes
 	 */
-	public byte[] getBytes(Node node, ByteArrayOutputStream output)
+	public void getBytes(Node node, OutputStream output)
 	{
 		writeBytes(node, output);
-		return output.toByteArray();
 	}
 	
 	
@@ -266,7 +267,7 @@ public abstract class Tree
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
 	 */
-	public void saveToFile()
+	public void saveToFile()//TODO erase existing file contents before writing
 	{
 		try 
 		{
@@ -274,8 +275,7 @@ public abstract class Tree
 			writeBytes(root, output);
 			output.close();
 		} 
-		catch (FileNotFoundException e) { e.printStackTrace(); } 
-		catch (IOException e) 			{ e.printStackTrace(); }
+		catch (IOException e) { e.printStackTrace(); }
 	}
 	
 	/**
@@ -285,7 +285,7 @@ public abstract class Tree
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
 	 */
-	public void saveToFile(Node node)
+	public void saveToFile(Node node)//TODO erase existing file contents before writing
 	{
 		try 
 		{
@@ -293,8 +293,7 @@ public abstract class Tree
 			writeBytes(node, output);
 			output.close();
 		} 
-		catch (FileNotFoundException e) { e.printStackTrace(); } 
-		catch (IOException e) 			{ e.printStackTrace(); }
+		catch (IOException e) { e.printStackTrace(); }
 	}
 	
 	/**
@@ -304,7 +303,7 @@ public abstract class Tree
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
 	 */
-	public void saveToFile(File destination)
+	public void saveToFile(File destination)//TODO erase existing file contents before writing
 	{
 		try 
 		{
@@ -312,8 +311,7 @@ public abstract class Tree
 			writeBytes(root, output);
 			output.close();
 		} 
-		catch (FileNotFoundException e) { e.printStackTrace(); } 
-		catch (IOException e) 			{ e.printStackTrace(); }
+		catch (IOException e) { e.printStackTrace(); }
 	}
 	
 	/**
@@ -323,7 +321,7 @@ public abstract class Tree
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
 	 */
-	public void saveToFile(Node node, File destination)
+	public void saveToFile(Node node, File destination)//TODO erase existing file contents before writing
 	{
 		try 
 		{
@@ -331,48 +329,105 @@ public abstract class Tree
 			writeBytes(node, output);
 			output.close();
 		} 
-		catch (FileNotFoundException e) { e.printStackTrace(); } 
-		catch (IOException e) 			{ e.printStackTrace(); }
+		catch (IOException e) { e.printStackTrace(); }
+	}
+	
+	
+	
+	/*
+	╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+	║ ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗ ║
+	║ ║																															 ║ ║
+	║ ║		CONSTRUCTORS																										 ║ ║
+	║ ║																															 ║ ║
+	║ ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ ║
+	╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	
+	
+	private 		int[]			min;					public int[] getMin()	  { return min;		}
+	private			int[]			max;					public int[] getMax()	  { return max;		}
+	private			int[]			minTrue;				public int[] getMinTrue() { return minTrue;	}
+	private			int[]			maxTrue;				public int[] getMaxTrue() { return maxTrue;	}
+	
+	public	final	File 			file;
+	public	final	Node 			root;
+	public	final	TreeEditor<?> 	editor;
+	
+	/**
+	 * Create a Tree from the given binary file. Invokes <tt>parseBytes()</tt>
+	 * 
+	 * @param file 			The source file, and save destination, for this Tree.
+	 * @see					{@link #parseBytes(File)}
+	 */
+	public Tree(File file)
+	{
+		setBoundsFromFilename(file);
+		
+		this.file	= file;
+		this.root	= parseBytes(file);
+		this.editor	= newEditor();
 	}
 	
 	
 	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------
-		CONSTRUCTOR
+		Methods used by constructors
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
 	
 	
-	/** 
-	 * Minimum and maximum bounds [ [min] [max] ]. 
-	 * Quadtrees store [x,z], Octrees store [x,z,y].
-	 */
-	public			int[][]		bounds;
-	/** 
-	 * Minimum and maximum bounds [ [min] [max] ]. 
-	 * Quadtrees store [x,z], Octrees store [x,z,y].<p>
+	/**
+	 * Set bounds of this tree from values specified
+	 * in the filename of the given source file.
 	 * 
-	 * <b>Bounds of the shape itself, 
-	 * not including empty nodes.
+	 * @param file 			the source file to examine
 	 */
-	public			int[][]		boundsTrue;
-	public final	File 		file;
-	public final	Node 		root;
-	public final	TreeEditor 	editor;
-	
-	public Tree(int[][] bounds, File file)
+	private static void setBoundsFromFilename(File file)
 	{
-		this.bounds	= bounds;
-		this.file	= file;
-		this.root	= parseBytes(file);
-		this.editor	= newEditor();
+		//TODO finish setBoundsFromFilename() method
 	}
 	
+	
 	/**
-	 * An abstract method, returning a new subclass-specific 
-	 * instance implementing the interface TreeEditor
-	 * @return a new TreeEditor
+	 * Abstract method, returns a new object 
+	 * extending the abstract class TreeEditor
+	 * 
+	 * @return 				a new TreeEditor
 	 */
-	abstract TreeEditor newEditor();
+	abstract TreeEditor<? extends TreeEditor.Edit> newEditor();
+	
+	
+	
+	
+	
+	
+	/*
+	╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+	║ ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗ ║
+	║ ║																															 ║ ║
+	║ ║		CALCULATIONS																										 ║ ║
+	║ ║																															 ║ ║
+	║ ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ ║
+	╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	
+	
+	/**
+	 * 
+	 * @param parentNode	
+	 * @param regionBounds	
+	 * @return
+	 */
+	public abstract Node[] getNodes(Node parentNode, int[][] regionBounds);
+	
+	
+	/**
+	 * 
+	 * @param regionBounds
+	 * @return
+	 */
+	public Node[] getNodes(int[][] regionBounds)
+	{
+		return getNodes(root, regionBounds);
+	}
 }
