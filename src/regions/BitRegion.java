@@ -4,6 +4,12 @@ import java.util.BitSet;
 
 public class BitRegion implements UtilBitSet
 {
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		CONSTRUCTORS
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
 	private int[] min;				public int[] getMin()	  { return min;		}
 	private int[] max;				public int[] getMax()	  { return max;		}
 	private int[] minTrue;			public int[] getMinTrue() { return minTrue;	}
@@ -16,7 +22,8 @@ public class BitRegion implements UtilBitSet
 	/**
 	 * 
 	 * 
-	 * @param min
+	 * @param minX
+	 * @param minZ
 	 */
 	public BitRegion(int minX, int minZ)
 	{
@@ -29,7 +36,9 @@ public class BitRegion implements UtilBitSet
 	/**
 	 * 
 	 * 
-	 * @param min
+	 * @param minX
+	 * @param minZ
+	 * @param minY
 	 */
 	public BitRegion(int minX, int minZ, int minY)
 	{
@@ -40,26 +49,30 @@ public class BitRegion implements UtilBitSet
 	
 	
 	
-	/*
-	╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-	║ ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗ ║
-	║ ║																															 ║ ║
-	║ ║		CALCULATIONS																										 ║ ║
-	║ ║																															 ║ ║
-	║ ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ ║
-	╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ */
-	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------
-		GETTERS
+		GET VALUE
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
 	
+	
 	/**
+	 * 
 	 * 
 	 * @return
 	 */
-	public int getBoxVolume()
+	public int getVolume()
+	{
+		return blocks.cardinality();
+	}
+	
+	
+	/**
+	 * 
+	 * 
+	 * @return
+	 */
+	public int getBoundsVolume()
 	{
 		if (max == null) return 0;
 		
@@ -71,27 +84,14 @@ public class BitRegion implements UtilBitSet
 	
 	/**
 	 * 
-	 * @return
-	 */
-	public int getVolume()
-	{
-		return blocks.cardinality();
-	}
-	
-	
-	
-	/*-------------------------------------
-		OVERLOADS : getIndex()
-	-------------------------------------*/
-	/**
-	 * 
 	 * @param coordinate
 	 * @return
 	 */
 	public int getIndex(int x, int z)
 	{
-		return getIndex(x, z, min[0], min[1]);
+		return (x - min[0]) + (z - min[1]);
 	}
+	
 	
 	/**
 	 * 
@@ -100,148 +100,158 @@ public class BitRegion implements UtilBitSet
 	 */
 	public int getIndex(int x, int z, int y)
 	{
-		return getIndex(x, z, y, min[0], min[1], min[2]);
-	}
-	
-	/**
-	 * 
-	 * @param coordinate
-	 * @param blocks
-	 * @param minX
-	 * @param maxX
-	 * @param minZ
-	 * @param maxZ
-	 * @return
-	 */
-	public static int getIndex(int x, int z, int minX, int minZ)
-	{
-		return (x - minX) + (z - minZ);
-	}
-	
-	/**
-	 * 
-	 * @param coordinate
-	 * @param blocks
-	 * @param minX
-	 * @param maxX
-	 * @param minZ
-	 * @param maxZ
-	 * @param minY
-	 * @param maxY
-	 * @return
-	 */
-	public static int getIndex(int x, int z, int y, int minX, int minZ, int minY)
-	{
-		return (x - minX) + (z - minZ) + (y - minY);
+		return (x - min[0]) + (z - min[1]) + (y - min[2]);
 	}
 	
 	
-	
-	/*-------------------------------------
-		OVERLOADS : getCoords()
-	-------------------------------------*/
 	/**
 	 * 
-	 * @param coordinate
+	 * @param index
 	 * @return
 	 */
 	public int getCoords(int index)
 	{
 		return is3D ?
-				getIndex(index, min[0], min[1], min[2]) :
-				getIndex(index, min[0], min[1]);
-	}
-	
-	/**
-	 * 
-	 * @param coordinate
-	 * @param blocks
-	 * @param minX
-	 * @param maxX
-	 * @param minZ
-	 * @param maxZ
-	 * @return
-	 */
-	public static int getCoords(int index, int minX, int minZ)
-	{
-		return (x - minX) + (z - minZ);
-	}
-	
-	/**
-	 * 
-	 * @param coordinate
-	 * @param blocks
-	 * @param minX
-	 * @param maxX
-	 * @param minZ
-	 * @param maxZ
-	 * @param minY
-	 * @param maxY
-	 * @return
-	 */
-	public static int getCoords(int index, int minX, int minZ, int minY)
-	{
-		return (x - minX) + (z - minZ) + (y - minY);
+				 :
+				;
 	}
 	
 	
 	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------
-		fill() and clear()
+		OVERLOADS : fill()
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
 	
-	/*-------------------------------------
-		OVERLOADS : fill()
-	-------------------------------------*/
 	/**
 	 * 
 	 */
 	public void fill()
 	{
-		blocks.set(0, getBoxVolume() - 1);
+		blocks.set(0, getBoundsVolume() - 1);
 	}
 	
 	/**
 	 * 
 	 * 
-	 * @param min
-	 * @param max
+	 * @param minX
+	 * @param minZ
+	 * @param maxX
+	 * @param maxZ
 	 */
-	public void fill(int[] min, int[] max)
+	public void fill(int minX, int minZ, int maxX, int maxZ)//TODO adjust bounds if necessary
 	{
+		int z;
+		int x;
 		
+		int index;
+		
+		for (z = minZ; z <= maxZ; z++)
+		{
+			index = getIndex(minX, z);
+			for (x = minX; x <= maxX; x++) 
+			{	
+				blocks.set(index++);
+			}
+		}
 	}
 	
 	/**
 	 * 
 	 * 
-	 * @param min
-	 * @param max
-	 * @param blocks
+	 * @param minX
+	 * @param minZ
+	 * @param maxX
+	 * @param maxZ
 	 */
-	public void fill(int minX, int minZ, int maxX, int maxZ, BitSet blocksToFill)
+	public void fill(int minX, int minZ, int minY, int maxX, int maxZ, int maxY)//TODO adjust bounds if necessary
 	{
-		BitSet row;
+		int y;
+		int z;
+		int x;
+		
+		int index;
+		
+		for (y = minY; y <= maxY; y++)
+		{
+			for (z = minZ; z <= maxZ; z++)
+			{
+				index = getIndex(minX, z, y);
+				for (x = minX; x <= maxX; x++) 
+				{	
+					blocks.set(index++);
+				}
+			}
+		}
 	}
 	
 	/**
 	 * 
 	 * 
-	 * @param min
-	 * @param max
-	 * @param blocks
+	 * @param minX
+	 * @param minZ
+	 * @param maxX
+	 * @param maxZ
+	 * @param blocksToFill
 	 */
-	public void fill(int minX, int minZ, int minY, int maxX, int maxZ, int maxY, BitSet blocksToFill)
+	public void fill(int minX, int minZ, int maxX, int maxZ, BitSet blocksToFill)//TODO adjust bounds if necessary
 	{
-		BitSet row;
+		int z;
+		int x;
+		
+		int index1;
+		int index2 = 0;
+		
+		for (z = minZ; z <= maxZ; z++)
+		{
+			index1 = getIndex(minX, z);
+			for (x = minX; x <= maxX; x++) 
+			{	
+				if (blocksToFill.get(index2++)) blocks.set(index1++);
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * 
+	 * @param minX
+	 * @param minZ
+	 * @param minY
+	 * @param maxX
+	 * @param maxZ
+	 * @param maxY
+	 * @param blocksToFill
+	 */
+	public void fill(int minX, int minZ, int minY, int maxX, int maxZ, int maxY, BitSet blocksToFill)//TODO adjust bounds if necessary
+	{
+		int y;
+		int z;
+		int x;
+		
+		int index1;
+		int index2 = 0;
+		
+		for (y = minY; y <= maxY; y++)
+		{
+			for (z = minZ; z <= maxZ; z++)
+			{
+				index1 = getIndex(minX, z, y);
+				for (x = minX; x <= maxX; x++) 
+				{	
+					if (blocksToFill.get(index2++)) blocks.set(index1++);
+				}
+			}
+		}
 	}
 	
 	
-	/*-------------------------------------
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
 		OVERLOADS : clear()
-	-------------------------------------*/
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
 	/**
 	 * 
 	 */
@@ -253,46 +263,112 @@ public class BitRegion implements UtilBitSet
 	/**
 	 * 
 	 * 
-	 * @param min
-	 * @param max
+	 * @param minX
+	 * @param minZ
+	 * @param maxX
+	 * @param maxZ
 	 */
-	public void clear(int[] min, int[] max)
+	public void clear(int minX, int minZ, int maxX, int maxZ)
 	{
+		int z;
+		int x;
 		
+		int index;
+		
+		for (z = minZ; z <= maxZ; z++)
+		{
+			index = getIndex(minX, z);
+			for (x = minX; x <= maxX; x++) 
+			{	
+				blocks.clear(index++);
+			}
+		}
 	}
 	
 	/**
 	 * 
 	 * 
-	 * @param min
-	 * @param max
-	 * @param blocks
+	 * @param minX
+	 * @param minZ
+	 * @param maxX
+	 * @param maxZ
+	 */
+	public void clear(int minX, int minZ, int minY, int maxX, int maxZ, int maxY)
+	{
+		int y;
+		int z;
+		int x;
+		
+		int index;
+		
+		for (y = minY; y <= maxY; y++)
+		{
+			for (z = minZ; z <= maxZ; z++)
+			{
+				index = getIndex(minX, z, y);
+				for (x = minX; x <= maxX; x++) 
+				{	
+					blocks.clear(index++);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * 
+	 * @param minX
+	 * @param minZ
+	 * @param maxX
+	 * @param maxZ
+	 * @param blocksToClear
 	 */
 	public void clear(int minX, int minZ, int maxX, int maxZ, BitSet blocksToClear)
 	{
-		BitSet row;
+		int z;
+		int x;
+		
+		int index1;
+		int index2 = 0;
+		
+		for (z = minZ; z <= maxZ; z++)
+		{
+			index1 = getIndex(minX, z);
+			for (x = minX; x <= maxX; x++) 
+			{	
+				if (blocksToClear.get(index2++)) blocks.clear(index1++);
+			}
+		}
 	}
 	
 	/**
 	 * 
 	 * 
-	 * @param min
-	 * @param max
-	 * @param blocks
+	 * @param minX
+	 * @param minZ
+	 * @param minY
+	 * @param maxX
+	 * @param maxZ
+	 * @param maxY
+	 * @param blocksToClear
 	 */
 	public void clear(int minX, int minZ, int minY, int maxX, int maxZ, int maxY, BitSet blocksToClear)
 	{
-		BitSet row;
-		int index = 0;
+		int y;
+		int z;
+		int x;
 		
-		for (int y = minY; y <= maxY; y++)
+		int index1;
+		int index2 = 0;
+		
+		for (y = minY; y <= maxY; y++)
 		{
-			for (int z = minZ; z <= maxZ; z++)
+			for (z = minZ; z <= maxZ; z++)
 			{
-				
-				for (int x = minX; x <= maxX; x++)
-				{
-					
+				index1 = getIndex(minX, z, y);
+				for (x = minX; x <= maxX; x++) 
+				{	
+					if (blocksToClear.get(index2++)) blocks.clear(index1++);
 				}
 			}
 		}

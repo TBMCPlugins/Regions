@@ -97,7 +97,7 @@ public class Octree extends Tree
 	----------------------------------------------------------------------------*/
 	
 	@Override
-	OctreeEditor newEditor() 
+	protected final OctreeEditor newEditor() 
 	{
 		return new OctreeEditor(this);
 	}

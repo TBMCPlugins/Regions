@@ -115,22 +115,24 @@ public abstract class Tree
 	 */
 	public Node parseBytes(File file)
 	{
-		if (file.length() == 0) 
-		{
-			return new Node(false);
-		}
+		if (file.length() == 0)	{ return new Node(false);		}
+		else					{ return parseBytes(file, 1);	}
+	}
+	
+	
+	private Node parseBytes(File file, int attempt)
+	{
 		try 
 		{
 			DataInputStream input = new DataInputStream(new BufferedInputStream(new FileInputStream(file)));
-			
 			Node node = parseBytes(input);
-			
 			input.close();
 			return node;
 		} 
-		catch (IOException e) 
+		catch (IOException e)
 		{ 
-			return new Node(false);
+			e.printStackTrace();
+			return attempt < 4 ? parseBytes(file, ++attempt) : new Node(false); 
 		}
 	}
 	
@@ -395,7 +397,7 @@ public abstract class Tree
 	 * 
 	 * @return 				a new TreeEditor
 	 */
-	abstract TreeEditor<? extends TreeEditor.Edit> newEditor();
+	protected abstract TreeEditor<? extends TreeEditor.Edit> newEditor();
 	
 	
 	
@@ -414,15 +416,6 @@ public abstract class Tree
 	
 	/**
 	 * 
-	 * @param parentNode	
-	 * @param regionBounds	
-	 * @return
-	 */
-	public abstract Node[] getNodes(Node parentNode, int[][] regionBounds);
-	
-	
-	/**
-	 * 
 	 * @param regionBounds
 	 * @return
 	 */
@@ -430,4 +423,13 @@ public abstract class Tree
 	{
 		return getNodes(root, regionBounds);
 	}
+	
+	
+	/**
+	 * 
+	 * @param parentNode	
+	 * @param regionBounds	
+	 * @return
+	 */
+	public abstract Node[] getNodes(Node parentNode, int[][] regionBounds);
 }
