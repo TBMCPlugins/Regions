@@ -2,64 +2,65 @@ package regions;
 
 import java.util.BitSet;
 
-public class BitRegion implements UtilBitSet
+public class BitRegion
 {
-	/*----------------------------------------------------------------------------
-	------------------------------------------------------------------------------
-		CONSTRUCTORS
-	------------------------------------------------------------------------------
-	----------------------------------------------------------------------------*/
+	/*
+	╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+	║ ╔══════════════════════════════════════════════════════════════════════════════════════════╗ ║
+	║ ║																							 ║ ║
+	║ ║		CONSTRUCTORS																		 ║ ║
+	║ ║																							 ║ ║
+	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
+	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
-	private int[] min;				public int[] getMin()	  { return min;		}
-	private int[] max;				public int[] getMax()	  { return max;		}
-	private int[] minTrue;			public int[] getMinTrue() { return minTrue;	}
-	private int[] maxTrue;			public int[] getMaxTrue() { return maxTrue;	}
+	protected int[] sides;		public int[] getSides() { return sides;	}
 	
-	public		final boolean 	is3D;
-	protected	final BitSet 	blocks;
+	public final boolean is3D;
+	
+	protected final BitSet blocks;
 	
 	
-	/**
-	 * 
-	 * 
-	 * @param minX
-	 * @param minZ
-	 */
-	public BitRegion(int minX, int minZ)
+	protected BitRegion(int xSideLength, int zSideLength)
 	{
-		this.min = new int[] { minX, minZ };
-		this.is3D = false;
-		this.blocks = new BitSet();
+		sides	= new int[] { xSideLength, zSideLength };
+		is3D 	= false;
+		blocks	= new BitSet();
 	}
 	
 	
-	/**
-	 * 
-	 * 
-	 * @param minX
-	 * @param minZ
-	 * @param minY
-	 */
-	public BitRegion(int minX, int minZ, int minY)
+	protected BitRegion(int xSideLength, int zSideLength, int ySideLength)
 	{
-		this.min = new int[] { minX, minZ, minY };
-		this.is3D = true;
-		this.blocks = new BitSet();
+		sides	= new int[] { xSideLength, zSideLength, ySideLength };
+		is3D 	= true;
+		blocks	= new BitSet();
+	}
+	
+	
+	public static BitRegion new2DBitRegion()
+	{
+		return new BitRegion(0, 0);
+	}
+	
+	
+	public static BitRegion new3DBitRegion()
+	{
+		return new BitRegion(0, 0, 0);
 	}
 	
 	
 	
-	/*----------------------------------------------------------------------------
-	------------------------------------------------------------------------------
-		GET VALUE
-	------------------------------------------------------------------------------
-	----------------------------------------------------------------------------*/
+	/*
+	╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+	║ ╔══════════════════════════════════════════════════════════════════════════════════════════╗ ║
+	║ ║																							 ║ ║
+	║ ║		GET VALUE																			 ║ ║
+	║ ║																							 ║ ║
+	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
+	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
 	
 	/**
-	 * 
-	 * 
-	 * @return
+	 * Get number of blocks contained in the region
 	 */
 	public int getVolume()
 	{
@@ -68,52 +69,170 @@ public class BitRegion implements UtilBitSet
 	
 	
 	/**
-	 * 
-	 * 
-	 * @return
+	 * Get number of blocks contained in the region's bounding box
 	 */
 	public int getBoundsVolume()
 	{
-		if (max == null) return 0;
-		
 		return is3D ?
-				(max[0] - min[0]) * (max[1] - min[1]) * (max[2] - min[2]) :
-				(max[0] - min[0]) * (max[1] - min[1]);
+				(sides[0]) * (sides[1]) * (sides[2]) :
+				(sides[0]) * (sides[1]);
 	}
 	
 	
 	/**
+	 * Get coordinates for the block at the given index in the BitSet
 	 * 
-	 * @param coordinate
+	 * @param index
 	 * @return
 	 */
-	public int getIndex(int x, int z)
+	protected int[] getCoords(int index)
 	{
-		return (x - min[0]) + (z - min[1]);
+		if (++index > getBoundsVolume()) return null;
+		
+		return is3D ? 
+				getCoords3D(index) : 
+				getCoords2D(index);
 	}
-	
 	
 	/**
 	 * 
-	 * @param coordinate
+	 * 
+	 * @param index
 	 * @return
 	 */
-	public int getIndex(int x, int z, int y)
+	protected int[] getCoords3D(int index)
 	{
-		return (x - min[0]) + (z - min[1]) + (y - min[2]);
+		if (index == 0) return new int[] {0, 0, 0};
+		
+		int[] xzy = new int[3];
+		
+		int crossSec = sides[0] * sides[1];
+		
+		xzy[2] = index / crossSec 	- ((index = index % crossSec) == 0 ? 1 : 0);		index = (index == 0 ? crossSec : index);
+		xzy[1] = index / sides[0]	- ((index = index % sides[0]) == 0 ? 1 : 0);		index = (index == 0 ? sides[0] : index);
+		xzy[0] = index - 1;
+		
+		return xzy;
 	}
-	
 	
 	/**
 	 * 
 	 * @param index
 	 * @return
 	 */
-	public int getCoords(int index)
+	protected int[] getCoords2D(int index)
 	{
-		return is3D ?
-				 :
-				;
+		if (index == 0) return new int[] {0, 0};
+		
+		int[] xz = new int[2];
+			
+		xz[1] = index / sides[0]	- ((index = index % sides[0]) == 0 ? 1 : 0);		index = (index == 0 ? sides[0] : index);
+		xz[0] = index - 1;
+		
+		return xz;
+	}
+	
+	
+	
+	/*-------------------------------------
+		OVERLOADS : getIndex()
+	-------------------------------------*/
+	/**
+	 * 
+	 * @param coordinate
+	 * @return
+	 */
+	public int getIndex(int x, int z)//TODO return -1 if outside bounds
+	{
+		return (z * sides[0]) + x;
+	}
+	
+	/**
+	 * 
+	 * @param coordinate
+	 * @return
+	 */
+	public int getIndex(int x, int z, int y)//TODO return -1 if outside bounds
+	{
+		return (y * sides[0] * sides[1]) + (z * sides[0]) + x;
+	}
+	
+	
+	/*-------------------------------------
+		OVERLOADS : blockAt()
+	-------------------------------------*/
+	/**
+	 * 
+	 * @param x
+	 * @param z
+	 * @return
+	 */
+	public boolean blockAt(int x, int z)//TODO return false if outside bounds
+	{
+		return blocks.get(getIndex(x,z));
+	}
+	
+	/**
+	 * 
+	 * @param x
+	 * @param z
+	 * @param y
+	 * @return
+	 */
+	public boolean blockAt(int x, int z, int y)//TODO return false if outside bounds
+	{
+		return blocks.get(getIndex(x, z, y));
+	}
+	
+	/**
+	 * 
+	 * @param index
+	 * @return
+	 */
+	public boolean blockAt(int index)
+	{
+		return blocks.get(index);
+	}
+	
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		OVERLOADS : shift()
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
+	/**
+	 * 
+	 * @param shift
+	 * @param fromIndex
+	 */
+	public void bitshift(int shift, int fromIndex)
+	{
+		if (shift < 1) return;
+		
+		int toAboveThisIndex = fromIndex + shift - 1;
+		
+		for (int i = blocks.size() + shift; i > toAboveThisIndex; i++)
+		{
+			blocks.set(i - shift, blocks.get(i));
+		}
+		blocks.clear(fromIndex, toAboveThisIndex);
+	}
+	
+	
+	
+	public void shift(int xShift, int zShift)
+	{
+		
+	}
+	
+	
+	
+	public void shift(int xShift, int zShift, int yShift)
+	{
+		
 	}
 	
 	
@@ -124,6 +243,7 @@ public class BitRegion implements UtilBitSet
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
 	
+	
 	/**
 	 * 
 	 */
@@ -131,6 +251,30 @@ public class BitRegion implements UtilBitSet
 	{
 		blocks.set(0, getBoundsVolume() - 1);
 	}
+	
+	
+	/**
+	 * 
+	 * @param x
+	 * @param z
+	 */
+	public void fill(int x, int z)
+	{
+		blocks.set(getIndex(x, z));
+	}
+	
+	
+	/**
+	 * 
+	 * @param x
+	 * @param z
+	 * @param y
+	 */
+	public void fill(int x, int z, int y)
+	{
+		blocks.set(getIndex(x, z, y));
+	}
+	
 	
 	/**
 	 * 
@@ -156,6 +300,7 @@ public class BitRegion implements UtilBitSet
 			}
 		}
 	}
+	
 	
 	/**
 	 * 
@@ -186,6 +331,7 @@ public class BitRegion implements UtilBitSet
 		}
 	}
 	
+	
 	/**
 	 * 
 	 * 
@@ -212,6 +358,7 @@ public class BitRegion implements UtilBitSet
 			}
 		}
 	}
+	
 	
 	/**
 	 * 
@@ -247,11 +394,14 @@ public class BitRegion implements UtilBitSet
 	}
 	
 	
+	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------
 		OVERLOADS : clear()
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
+	
+	
 	/**
 	 * 
 	 */
@@ -259,6 +409,30 @@ public class BitRegion implements UtilBitSet
 	{
 		blocks.clear();
 	}
+	
+	
+	/**
+	 * 
+	 * @param x
+	 * @param z
+	 */
+	public void clear(int x, int z)
+	{
+		blocks.clear(getIndex(x, z));
+	}
+	
+	
+	/**
+	 * 
+	 * @param x
+	 * @param z
+	 * @param y
+	 */
+	public void clear(int x, int z, int y)
+	{
+		blocks.clear(getIndex(x, z, y));
+	}
+	
 	
 	/**
 	 * 
@@ -284,6 +458,7 @@ public class BitRegion implements UtilBitSet
 			}
 		}
 	}
+	
 	
 	/**
 	 * 
@@ -314,6 +489,7 @@ public class BitRegion implements UtilBitSet
 		}
 	}
 	
+	
 	/**
 	 * 
 	 * 
@@ -340,6 +516,7 @@ public class BitRegion implements UtilBitSet
 			}
 		}
 	}
+	
 	
 	/**
 	 * 

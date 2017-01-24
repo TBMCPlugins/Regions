@@ -1,7 +1,6 @@
 package regions;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -58,13 +57,13 @@ public abstract class Tree
 	
 	
 	/*
-	╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-	║ ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗ ║
-	║ ║																															 ║ ║
-	║ ║		BYTE CONVERSION																										 ║ ║
-	║ ║																															 ║ ║
-	║ ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ ║
-	╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+	║ ╔══════════════════════════════════════════════════════════════════════════════════════════╗ ║
+	║ ║																							 ║ ║
+	║ ║		BYTE CONVERSION																		 ║ ║
+	║ ║																							 ║ ║
+	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
+	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------
@@ -97,11 +96,11 @@ public abstract class Tree
 	 * 
 	 * @param input 		DataInputStream of source bytes
 	 * @return 				a new Node
+	 * @throws 				IOException 	
 	 */
-	public Node parseBytes(DataInputStream input)
+	public Node parseBytes(DataInputStream input) throws IOException
 	{
-		try 					{ return parseBytes(input, 0); 	} 
-		catch (IOException e) 	{ return new Node(false);		}
+		return parseBytes(input, 0);
 	}
 	
 	
@@ -112,28 +111,16 @@ public abstract class Tree
 	 * 
 	 * @param file			binary file to read bytes from
 	 * @return 				a new Node
+	 * @throws 				IOException 	
 	 */
-	public Node parseBytes(File file)
+	public Node parseBytes(File file) throws IOException
 	{
-		if (file.length() == 0)	{ return new Node(false);		}
-		else					{ return parseBytes(file, 1);	}
-	}
+		if (file.length() == 0) return new Node(false);
 	
-	
-	private Node parseBytes(File file, int attempt)
-	{
-		try 
-		{
-			DataInputStream input = new DataInputStream(new BufferedInputStream(new FileInputStream(file)));
-			Node node = parseBytes(input);
-			input.close();
-			return node;
-		} 
-		catch (IOException e)
-		{ 
-			e.printStackTrace();
-			return attempt < 4 ? parseBytes(file, ++attempt) : new Node(false); 
-		}
+		DataInputStream input = new DataInputStream( new BufferedInputStream( new FileInputStream(file) ));
+		Node node = parseBytes(input);
+		input.close();
+		return node;
 	}
 	
 	
@@ -183,79 +170,17 @@ public abstract class Tree
 	
 	
 	/**
-	 * Parses the tree rooted at this node, appending in depth-first order the result of invoking
+	 * Parses the tree below this node, appending in depth-first order the result of invoking
 	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
 	 * node in the tree, skipping childless nodes.<p>
 	 * 
-	 * NOTE: assumes an OutputStream that appends with each write.
+	 * Assumes an OutputStream that appends with each write.
 	 * 
 	 * @param node 			the node to be parsed
 	 * @return 				a byte array representing the node and all its child nodes
+	 * @throws				IOException
 	 */
-	public abstract void writeBytes(Node node, OutputStream output);
-	
-	
-	
-	/*-------------------------------------
-		OVERLOADS : getBytes()
-	-------------------------------------*/
-	/**
-	 * Parses the tree from the root, appending in depth-first order the result of invoking
-	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
-	 * node in the tree, skipping childless nodes.<p>
-	 * 
-	 * @return 				byte array representing the root node and all its child nodes
-	 */
-	public byte[] getBytes()
-	{
-		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		writeBytes(root, output);
-		return output.toByteArray();
-	}
-	
-	/**
-	 * Parses the tree below this node, appending in depth-first order the result of invoking
-	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
-	 * node in the tree, skipping childless nodes.<p>
-	 * 
-	 * @param node 			the node to parse from
-	 * @return 				byte array representing the given node and all its child nodes
-	 */
-	public byte[] getBytes(Node node)
-	{
-		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		writeBytes(node, output);
-		return output.toByteArray();
-	}
-	
-	/**
-	 * Parses the tree from the root, appending in depth-first order the result of invoking
-	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
-	 * node in the tree, skipping childless nodes.<p>
-	 * 
-	 * Writes to the given OutputStream, does not close the stream.
-	 * 
-	 * @param output 		the ByteArrayOutputStream to write to
-	 */
-	public void getBytes(OutputStream output)
-	{
-		writeBytes(root, output);
-	}
-	
-	/**
-	 * Parses the tree below this node, appending in depth-first order the result of invoking
-	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
-	 * node in the tree, skipping childless nodes.<p>
-	 * 
-	 * Writes to the given OutputStream, does not close the stream.
-	 * 
-	 * @param node 			the node to parse from
-	 * @param output 		the ByteArrayOutputStream to write to
-	 */
-	public void getBytes(Node node, OutputStream output)
-	{
-		writeBytes(node, output);
-	}
+	public abstract void writeBytes(Node node, OutputStream output) throws IOException;
 	
 	
 	
@@ -263,105 +188,93 @@ public abstract class Tree
 		OVERLOADS : saveToFile()
 	-------------------------------------*/
 	/**
-	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the root node, using a 
-	 * FileOutputStream of the source file as the OutputStream argument.
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the root node, 
+	 * using a FileOutputStream of the source file as the OutputStream argument.
 	 * 
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
+	 * @throws 				IOException
 	 */
-	public void saveToFile()//TODO erase existing file contents before writing
+	public void saveToFile() throws IOException
 	{
-		try 
-		{
-			FileOutputStream output = new FileOutputStream (file, true);
-			writeBytes(root, output);
-			output.close();
-		} 
-		catch (IOException e) { e.printStackTrace(); }
+		FileOutputStream output = new FileOutputStream (new File(file.getAbsolutePath()), true);
+		writeBytes(root, output);
+		output.close();
 	}
 	
 	/**
-	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the given node, using a 
-	 * FileOutputStream of the source file as the OutputStream argument.
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the given node, 
+	 * using a FileOutputStream of the source file as the OutputStream argument.
 	 * 
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
+	 * @throws 				IOException
 	 */
-	public void saveToFile(Node node)//TODO erase existing file contents before writing
+	public void saveToFile(Node node) throws IOException
 	{
-		try 
-		{
-			FileOutputStream output = new FileOutputStream (file, true);
-			writeBytes(node, output);
-			output.close();
-		} 
-		catch (IOException e) { e.printStackTrace(); }
+		FileOutputStream output = new FileOutputStream (new File(file.getAbsolutePath()), true);
+		writeBytes(node, output);
+		output.close();
 	}
 	
 	/**
-	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the root node, using a 
-	 * FileOutputStream of the given file as the OutputStream argument.
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the root node, 
+	 * using a FileOutputStream of the given file as the OutputStream argument.
 	 * 
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
+	 * @throws 				IOException
 	 */
-	public void saveToFile(File destination)//TODO erase existing file contents before writing
+	public void saveToFile(File destination) throws IOException
 	{
-		try 
-		{
-			FileOutputStream output = new FileOutputStream (destination, true);
-			writeBytes(root, output);
-			output.close();
-		} 
-		catch (IOException e) { e.printStackTrace(); }
+		FileOutputStream output = new FileOutputStream (new File(destination.getAbsolutePath()), true);
+		writeBytes(root, output);
+		output.close();
 	}
 	
 	/**
-	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the given node, using a 
-	 * FileOutputStream of the given file as the OutputStream argument.
+	 * Performs <tt>{@link #writeBytes(Node, OutputStream)}</tt> from the given node, 
+	 * using a FileOutputStream of the given file as the OutputStream argument.
 	 * 
 	 * @param node			the root node of the tree to be parsed
 	 * @param destination	the file to save to
+	 * @throws 				IOException
 	 */
-	public void saveToFile(Node node, File destination)//TODO erase existing file contents before writing
+	public void saveToFile(Node node, File destination) throws IOException
 	{
-		try 
-		{
-			FileOutputStream output = new FileOutputStream (destination, true);
-			writeBytes(node, output);
-			output.close();
-		} 
-		catch (IOException e) { e.printStackTrace(); }
+		FileOutputStream output = new FileOutputStream (new File(destination.getAbsolutePath()), true);
+		writeBytes(node, output);
+		output.close();
 	}
 	
 	
 	
 	/*
-	╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-	║ ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗ ║
-	║ ║																															 ║ ║
-	║ ║		CONSTRUCTORS																										 ║ ║
-	║ ║																															 ║ ║
-	║ ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ ║
-	╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+	║ ╔══════════════════════════════════════════════════════════════════════════════════════════╗ ║
+	║ ║																							 ║ ║
+	║ ║		CONSTRUCTORS																		 ║ ║
+	║ ║																							 ║ ║
+	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
+	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
 	
-	private 		int[]			min;					public int[] getMin()	  { return min;		}
-	private			int[]			max;					public int[] getMax()	  { return max;		}
-	private			int[]			minTrue;				public int[] getMinTrue() { return minTrue;	}
-	private			int[]			maxTrue;				public int[] getMaxTrue() { return maxTrue;	}
+	protected int[]	min;			public int[] getMin()	  { return min;		}
+	protected int[]	max;			public int[] getMax()	  { return max;		}
+	protected int[]	minTrue;		public int[] getMinTrue() { return minTrue;	}
+	protected int[]	maxTrue;		public int[] getMaxTrue() { return maxTrue;	}
 	
-	public	final	File 			file;
-	public	final	Node 			root;
-	public	final	TreeEditor<?> 	editor;
+	public final File file;
+	public final Node root;
+	public final TreeEditor<? extends Tree> editor;
 	
 	/**
-	 * Create a Tree from the given binary file. Invokes <tt>parseBytes()</tt>
+	 * Create a Tree from the given binary file. Invokes {@link #parseBytes(File)}
 	 * 
 	 * @param file 			The source file, and save destination, for this Tree.
-	 * @see					{@link #parseBytes(File)}
+	 * @throws 				IOException
 	 */
-	public Tree(File file)
+	public Tree(File file) throws IOException
 	{
 		setBoundsFromFilename(file);
 		
@@ -397,21 +310,27 @@ public abstract class Tree
 	 * 
 	 * @return 				a new TreeEditor
 	 */
-	protected abstract TreeEditor<? extends TreeEditor.Edit> newEditor();
-	
-	
-	
+	abstract TreeEditor<? extends Tree> newEditor();
 	
 	
 	
 	/*
-	╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-	║ ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗ ║
-	║ ║																															 ║ ║
-	║ ║		CALCULATIONS																										 ║ ║
-	║ ║																															 ║ ║
-	║ ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ ║
-	╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+	║ ╔══════════════════════════════════════════════════════════════════════════════════════════╗ ║
+	║ ║																							 ║ ║
+	║ ║		CALCULATIONS																		 ║ ║
+	║ ║																							 ║ ║
+	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
+	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	
+	
+	/**
+	 * 
+	 * @param parentNode	
+	 * @param regionBounds	
+	 * @return
+	 */
+	public abstract Node[] getNodes(Node parentNode, int[][] regionBounds);
 	
 	
 	/**
@@ -423,13 +342,4 @@ public abstract class Tree
 	{
 		return getNodes(root, regionBounds);
 	}
-	
-	
-	/**
-	 * 
-	 * @param parentNode	
-	 * @param regionBounds	
-	 * @return
-	 */
-	public abstract Node[] getNodes(Node parentNode, int[][] regionBounds);
 }
