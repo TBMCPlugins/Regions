@@ -59,7 +59,7 @@ public class BitRegion2D
 	 * @param index
 	 * @return
 	 */
-	protected int[] getCoords(int index)
+	public int[] getCoords(int index)
 	{
 		if (index++ == 0) return new int[] {0, 0};
 		
@@ -131,13 +131,15 @@ public class BitRegion2D
 	 */
 	public void bitshift(int shift, int fromIndex)
 	{
-		if (shift < 1) return;
+		if (shift < 1) 
+			return;
 		
 		int toAboveThisIndex = fromIndex + shift - 1;
 		
 		for (int i = blocks.size() + shift; i > toAboveThisIndex; i--)
+		{
 			blocks.set(i, blocks.get(i - shift));
-		
+		}
 		blocks.clear(fromIndex, toAboveThisIndex);
 	}
 	

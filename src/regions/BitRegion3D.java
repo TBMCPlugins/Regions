@@ -13,7 +13,7 @@ public class BitRegion3D
 	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
-	protected int[] sides;		public int[] getSides() { return sides;	}
+	protected int[] sides;		
 	
 	protected final BitSet blocks;
 	
@@ -33,6 +33,15 @@ public class BitRegion3D
 	║ ║																							 ║ ║
 	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	
+	
+	/**
+	 * Return side-lengths of bounding box.
+	 */
+	public int[] getSides() 
+	{
+		return sides;
+	}
 	
 	
 	/**
@@ -59,9 +68,9 @@ public class BitRegion3D
 	 * @param index
 	 * @return
 	 */
-	protected int[] getCoords3D(int index)
+	public int[] getCoords(int index)
 	{
-		if (index++ == 0) return new int[] {0, 0, 0};
+		if (index++ == 0) return new int[] {0, 0, 0};//TODO do I actually need to include this method
 		
 		int[] xzy = new int[3];
 		
@@ -81,7 +90,7 @@ public class BitRegion3D
 	 * @param coordinate
 	 * @return
 	 */
-	protected int getIndex(int x, int z, int y)
+	public int getIndex(int x, int z, int y)
 	{
 		return (y * sides[0] * sides[1]) + (z * sides[0]) + x;
 	}
@@ -131,37 +140,51 @@ public class BitRegion3D
 	
 	/**
 	 * 
-	 * @param shift
-	 * @param fromIndex
-	 */
-	public void bitshift(int shift, int fromIndex)
-	{
-		if (shift < 1) return;
-		
-		int toAboveThisIndex = fromIndex + shift - 1;
-		
-		for (int i = blocks.size() + shift; i > toAboveThisIndex; i--)
-			blocks.set(i - shift, blocks.get(i));
-		
-		blocks.clear(fromIndex, toAboveThisIndex);
-	}
-	
-	
-	/**
-	 * 
-	 * @param xShift
-	 * @param zShift
-	 * @param yShift
+	 * @param xMin
+	 * @param xMax
+	 * @param zMin
+	 * @param zMax
+	 * @param yMin
+	 * @param yMax
 	 */
 	public void expand(int xMin, int xMax, int zMin, int zMax, int yMin, int yMax)
 	{
-		int[] newSides = new int[] {xMax - xMin + 1, 
-									zMax - zMin + 1, 
-									yMax - yMin + 1};
+		final int[] newSides = new int[] { xMax - xMin + 1, 
+										   zMax - zMin + 1, 
+						   				   yMax - yMin + 1 };
 		
-		/* add empty space before each x row
-		 * add empty space at bottom
-		 */
+		final int yRoof = (newSides[2] - sides[2] + yMin) * newSides[0] * newSides[1];
+		final int zRoof = (newSides[1] - sides[1] + zMin) * newSides[0];
+		final int xRoof =  newSides[0] - sides[0] + xMin;
+		
+		final int yIncrement = yRoof + -yMin * newSides[0] * newSides[1];
+		final int zIncrement = zRoof + -zMin * newSides[0];
+		final int xIncrement = xRoof + -xMin;
+		
+		
+		
+		int index = sides[0] * sides[1] * sides[2] - 1;
+		int shift = newSides[0] * newSides[1] * newSides[2] - 1 - (yRoof + zRoof + xRoof) - index;
+		int newIndex = index + shift;
+		int x, z, y;
+		
+		for (y = sides[2]; y > 0; y--)
+		{
+			for (z = sides[1]; z > 0; z--)
+			{
+				newIndex = index + shift;
+				for (x = sides[0]; x > 0; x--)
+				{
+					blocks.set(newIndex--, blocks.get(index--));
+				}
+				shift -= xIncrement;
+				blocks.clear(index + shift, newIndex);
+			}
+			shift -= zIncrement;
+			blocks.clear(index + shift, newIndex);
+		}
+		shift -= yIncrement;
+		blocks.clear(index + shift, newIndex);		
 	}
 	
 	
