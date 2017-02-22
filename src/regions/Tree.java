@@ -7,27 +7,23 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.BitSet;
 
 /**
- * This is a superclass for octrees, quadtrees, and any other spatial trees.<p>
+ * A superclass for octrees and quadtrees. Concept credit to Don Meagher, who first named and 
+ * described Octrees in his 1980 paper, "Octree Encoding: A New Technique for the Representation, 
+ * Manipulation and Display of Arbitrary 3-D Objects by Computer."<p>
  * 
- * concept credit to Don Meagher, who first named and described Octrees in his 1980 paper,
- * "Octree Encoding: A New Technique for the Representation, Manipulation and Display of 
- * Arbitrary 3-D Objects by Computer."<p>
+ * Octree application can be visualized like this:<p>
  * 
- * The idea works like this:<p>
+ * For any arbitrary 3-D object, find the bounding cube of the shape (or the smallest cube it will
+ * fit inside of). Divide this bounding cube into 8 sub-cubes, or octants.<p>
  * 
- * For some arbitrary shape, you first define the bounding box of the shape (or the 
- * smallest box your shape will fit inside of). This box outlines the minimum and maximum 
- * x, y, and z dimensions of the shape.<p>
+ * With the space thus divided, evaluate which octants the object fills, which it avoids, and which
+ * it intersects. Divide intersected octants again. Continue dividing until no partial octants remain,
+ * or until the desired resolution is reached.<p>
  * 
- * Next, you divide this cube evenly into 8 more cubes, determining which of these cubes
- * your shape fills, which it leaves empty, and which it intersects. Intersected cubes are 
- * divided again into 8 more cubes, and the process repeats until only completely full 
- * (<tt>true</tt>) and completely empty (<tt>false</tt>) cubes remain.<p>
- * 
- * With this tree, you can quickly determine whether any arbitrary point is inside or outside
- * your shape by navigating the tree to reach the smallest cube containing your point.
+ * Useful for testing whether an arbitrary 3-D object contains any given point.
  * 
  * @author Kevin Mathewson
  *
@@ -47,10 +43,27 @@ public abstract class Tree
 			this.full 		= full;	
 			this.children 	= new Node[0];
 		}
-		public Node(Node[] nodes)
+		public Node(Node... nodes)
 		{
 			this.full 		= false;
 			this.children 	= nodes;
+		}
+		
+		
+		/**
+		 * Returns an array containing the given number of empty, childless nodes
+		 * 
+		 * @param length	desired size of array
+		 */
+		public static Node[] emptyNodeArray(int length)
+		{
+			Node[] array = new Node[length];
+			
+			for (int i = 0; i < length; i++)
+			{
+				array[i] = new Node(false);
+			}
+			return array;
 		}
 	}
 	
@@ -170,14 +183,12 @@ public abstract class Tree
 	
 	
 	/**
-	 * Parses the tree below this node, appending in depth-first order the result of invoking
-	 * <tt>{@link #getByte(Node, Node, Node, Node) getByte(children)}</tt> for each encountered 
-	 * node in the tree, skipping childless nodes.<p>
-	 * 
-	 * Assumes an OutputStream that appends with each write.
+	 * Appends to the OutputStream the result of invoking <tt>{@link #getByte(Node, Node, Node, Node) 
+	 * getByte(children)}</tt> for each node, skipping childless nodes. Assumes an OutputStream that 
+	 * appends with each write. Traverses depth-first.
 	 * 
 	 * @param node 			the node to be parsed
-	 * @return 				a byte array representing the node and all its child nodes
+	 * @param output		the OutputStream to write to
 	 * @throws				IOException
 	 */
 	public abstract void writeBytes(Node node, OutputStream output) throws IOException;
@@ -266,7 +277,6 @@ public abstract class Tree
 	
 	public final File file;
 	public final Node root;
-	public final TreeEditor<? extends Tree> editor;
 	
 	/**
 	 * Create a Tree from the given binary file. Invokes {@link #parseBytes(File)}
@@ -280,7 +290,19 @@ public abstract class Tree
 		
 		this.file	= file;
 		this.root	= parseBytes(file);
-		this.editor	= newEditor();
+	}
+	
+	/**
+	 * 
+	 * 
+	 * @param file			The source file, and save destination, for this Tree
+	 * @param blocks		BitSet representing all <tt>true</tt> points in the given volume
+	 * @param bounds		Min and max coordinates of the bounding box
+	 */
+	public Tree(File file, BitSet blocks, int[][] bounds)
+	{
+		this.file 	= file;
+		this.root 	= null;
 	}
 	
 	
@@ -298,19 +320,10 @@ public abstract class Tree
 	 * 
 	 * @param file 			the source file to examine
 	 */
-	private static void setBoundsFromFilename(File file)
+	private void setBoundsFromFilename(File file)
 	{
 		//TODO finish setBoundsFromFilename() method
 	}
-	
-	
-	/**
-	 * Abstract method, returns a new object 
-	 * extending the abstract class TreeEditor
-	 * 
-	 * @return 				a new TreeEditor
-	 */
-	abstract TreeEditor<? extends Tree> newEditor();
 	
 	
 	
@@ -323,23 +336,146 @@ public abstract class Tree
 	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		STATIC CALCULATIONS
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
 	
+	/*-------------------------------------
+		OVERLOADS : nextPowerOfTwo()
+	-------------------------------------*/
 	/**
 	 * 
-	 * @param parentNode	
-	 * @param regionBounds	
+	 * @param a
 	 * @return
 	 */
-	public abstract Node[] getNodes(Node parentNode, int[][] regionBounds);
-	
-	
-	/**
-	 * 
-	 * @param regionBounds
-	 * @return
-	 */
-	public Node[] getNodes(int[][] regionBounds)
+	public static int nextPowerOfTwo(int a)
 	{
-		return getNodes(root, regionBounds);
+		return java.lang.Integer.highestOneBit(a) << 1;
 	}
+	
+	/**
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static int nextPowerOfTwo(int a, int b)
+	{
+		return java.lang.Integer.highestOneBit(Math.max(a, b)) << 1;
+	}
+	
+	/**
+	 * 
+	 * @param a
+	 * @param b
+	 * @param c
+	 * @return
+	 */
+	public static int nextPowerOfTwo(int a, int b, int c)
+	{
+		return java.lang.Integer.highestOneBit(Math.max(Math.max(a, b), c)) << 1;
+	}
+	
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		EVALUATE
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
+	/**
+	 * 
+	 * @param coords
+	 * @return
+	 */
+	public abstract boolean contains(int... coords);
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		ADD VOLUME
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
+	/**
+	 * 
+	 * @param coordinates
+	 */
+	protected abstract void expandAsNeeded(int...coords);
+	
+	
+	/**
+	 * 
+	 * @param bounds
+	 */
+	protected abstract void expandAsNeeded(int[]...bounds);
+	
+	
+	/**
+	 * 
+	 * @param coordinates
+	 * @return
+	 */
+	public abstract void add(int...coords);
+	
+	
+	/**
+	 * 
+	 * @param bounds
+	 * @return
+	 */
+	public abstract void add(int[]...bounds);
+	
+	
+	/**
+	 * 
+	 * @param blocks
+	 * @param bounds
+	 * @return
+	 */
+	public abstract void add(BitSet blocks, int[]...bounds);
+	
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		REMOVE VOLUME
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
+	/**
+	 * 
+	 */
+	public abstract void trimAsNeeded();
+	
+	
+	/**
+	 * 
+	 * @param coordinates
+	 * @return
+	 */
+	public abstract void remove(int...coords);
+	
+	
+	/**
+	 * 
+	 * @param bounds
+	 * @return
+	 */
+	public abstract void remove(int[]...bounds);
+	
+	
+	/**
+	 * 
+	 * @param blocks
+	 * @param bounds
+	 * @return
+	 */
+	public abstract void remove(BitSet blocks, int[]...bounds);
 }
