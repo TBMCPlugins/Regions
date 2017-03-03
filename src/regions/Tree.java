@@ -41,7 +41,7 @@ public abstract class Tree
 		public Node(boolean full)
 		{
 			this.full 		= full;	
-			this.children 	= new Node[0];
+			this.children 	= null;
 		}
 		public Node(Node... nodes)
 		{
@@ -49,20 +49,16 @@ public abstract class Tree
 			this.children 	= nodes;
 		}
 		
-		
 		/**
-		 * Returns an array containing the given number of empty, childless nodes
+		 * Returns an array containing the given number of childless empty nodes
 		 * 
 		 * @param length	desired size of array
 		 */
 		public static Node[] emptyNodeArray(int length)
 		{
 			Node[] array = new Node[length];
-			
 			for (int i = 0; i < length; i++)
-			{
 				array[i] = new Node(false);
-			}
 			return array;
 		}
 	}
@@ -154,7 +150,7 @@ public abstract class Tree
 	 */
 	public static byte getBits(Node node)
 	{
-		return 	node.full ?	(byte) 2 : node.children.length == 0 ? 	(byte) 1 : (byte) 0;
+		return 	node.full ?	(byte) 2 : node.children == null ? (byte) 1 : (byte) 0;
 	}
 	
 	
@@ -270,13 +266,12 @@ public abstract class Tree
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
 	
-	protected int[]	min;			public int[] getMin()	  { return min;		}
-	protected int[]	max;			public int[] getMax()	  { return max;		}
-	protected int[]	minTrue;		public int[] getMinTrue() { return minTrue;	}
-	protected int[]	maxTrue;		public int[] getMaxTrue() { return maxTrue;	}
+	protected int[]	min;			public int[] getMin() { return min.clone(); }
+	protected int[]	max;			public int[] getMax() { return max.clone(); }
 	
-	public final File file;
-	public final Node root;
+	protected final File file;
+	protected final Node root;
+	
 	
 	/**
 	 * Create a Tree from the given binary file. Invokes {@link #parseBytes(File)}
@@ -291,6 +286,7 @@ public abstract class Tree
 		this.file	= file;
 		this.root	= parseBytes(file);
 	}
+	
 	
 	/**
 	 * 
@@ -452,7 +448,28 @@ public abstract class Tree
 	/**
 	 * 
 	 */
-	public abstract void trimAsNeeded();
+	public void trimAsNeeded() //TODO replace with abstract, adjust bounds
+	{
+		outerloop:
+		while (true)
+		{
+			for (Node child1 : root.children)
+			{
+				if (child1.children != null)
+				{
+					for (Node child2 : root.children)
+					{
+						if (child2.children != null)
+						{
+							break outerloop;
+						}
+					}
+					root.children = child1.children;
+					break;
+				}
+			}
+		}
+	}
 	
 	
 	/**

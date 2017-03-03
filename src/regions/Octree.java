@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.BitSet;
 
-import regions.Tree.Node;
-
 public class Octree extends Tree
 {
 	/*----------------------------------------------------------------------------
@@ -62,7 +60,7 @@ public class Octree extends Tree
 								 ));
 		
 		for (Node child : node.children) 
-			if (child.children.length > 0)
+			if (child.children != null)
 				writeBytes(child, output);
 	}
 	
@@ -91,7 +89,11 @@ public class Octree extends Tree
 	@Override
 	public boolean contains(int... coords)
 	{
-		
+		if (coords[0] < min[0] || coords[0] > max[0] ||
+			coords[1] < min[1] || coords[1] > max[1] ||
+			coords[2] < min[2] || coords[2] > max[2]
+			)
+			return false;
 	}
 	
 	
@@ -122,47 +124,46 @@ public class Octree extends Tree
 						  double xMaxExpansion, double zMaxExpansion, double yMaxExpansion
 						  )
 	{
-		int xMinRounded = (int) Math.ceil(xMinExpansion),
-			zMinRounded = (int) Math.ceil(zMinExpansion),
-			yMinRounded = (int) Math.ceil(yMinExpansion),
-			xMaxRounded = (int) Math.ceil(xMaxExpansion),
-			zMaxRounded = (int) Math.ceil(zMaxExpansion),
-			yMaxRounded = (int) Math.ceil(yMaxExpansion),
+		int xMinCeil = (int) Math.ceil(xMinExpansion),
+			zMinCeil = (int) Math.ceil(zMinExpansion),
+			yMinCeil = (int) Math.ceil(yMinExpansion),
+			xMaxCeil = (int) Math.ceil(xMaxExpansion),
+			zMaxCeil = (int) Math.ceil(zMaxExpansion),
+			yMaxCeil = (int) Math.ceil(yMaxExpansion),
 			
-			size = nextPowerOfTwo(	xMinRounded + xMaxRounded + 1, 
-									zMinRounded + zMaxRounded + 1, 
-									yMinRounded + yMaxRounded + 1
-									),
+			size = nextPowerOfTwo(xMinCeil + xMaxCeil + 1, 
+								  zMinCeil + zMaxCeil + 1, 
+								  yMinCeil + yMaxCeil + 1
+								  ),
 		
-			xMargin = size - (xMinRounded + xMaxRounded + 1),
-			zMargin = size - (zMinRounded + zMaxRounded + 1),
-			yMargin = size - (yMinRounded + yMaxRounded + 1),
-			
+			xMargin = size - (xMinCeil + xMaxCeil + 1),
+			zMargin = size - (zMinCeil + zMaxCeil + 1),
+			yMargin = size - (yMinCeil + yMaxCeil + 1),
 			xMarginHalf = xMargin / 2,
 			zMarginHalf = zMargin / 2,
 			yMarginHalf = yMargin / 2;
 		
 		
+		xMinCeil += xMarginHalf;
+		zMinCeil += zMarginHalf;
+		yMinCeil += yMarginHalf;
+		xMaxCeil += xMarginHalf;
+		zMaxCeil += zMarginHalf;
+		yMaxCeil += yMarginHalf;
 		
-		xMinRounded += xMarginHalf;
-		zMinRounded += zMarginHalf;
-		yMinRounded += yMarginHalf;
-		xMaxRounded += xMarginHalf;
-		zMaxRounded += zMarginHalf;
-		yMaxRounded += yMarginHalf;
+		if (xMargin % 2 == 1) if (xMinCeil - xMinExpansion > xMaxCeil - xMaxExpansion) xMinCeil++; else xMaxCeil++;
 		
-		/* if margin is odd, add 1
-		 * to the more close-fitting side
-		 */
-		if (xMargin % 2 == 1)
-			if (xMinRounded - xMinExpansion > xMaxRounded - xMaxExpansion) xMinRounded++; else xMaxRounded++;
+		if (zMargin % 2 == 1) if (zMinCeil - zMinExpansion > zMaxCeil - zMaxExpansion) zMinCeil++; else zMaxCeil++;
 		
-		if (zMargin % 2 == 1)
-			if (zMinRounded - zMinExpansion > zMaxRounded - zMaxExpansion) zMinRounded++; else zMaxRounded++;
+		if (yMargin % 2 == 1) if (yMinCeil - yMinExpansion > yMaxCeil - yMaxExpansion) yMinCeil++; else yMaxCeil++;
 		
-		if (yMargin % 2 == 1)
-			if (yMinRounded - yMinExpansion > yMaxRounded - yMaxExpansion) yMinRounded++; else yMaxRounded++;
-		
+		int sideLength = max[0] - min[0] + 1;
+		min[0] -= (sideLength * xMinCeil);
+		min[1] -= (sideLength * zMinCeil);
+		min[2] -= (sideLength * yMinCeil);
+		max[0] += (sideLength * xMaxCeil);
+		max[1] += (sideLength * zMaxCeil);
+		max[2] += (sideLength * yMaxCeil);
 		
 		
 		int index;
@@ -174,25 +175,25 @@ public class Octree extends Tree
 			size >>>= 1;
 			index = 0;
 			
-			if (xMinRounded >= size)
-				xMinRounded -= size;
+			if (xMinCeil >= size)
+				xMinCeil -= size;
 			else
 			{
-				xMaxRounded -= size;
+				xMaxCeil -= size;
 				index += 1;
 			}
-			if (zMinRounded >= size)
-				zMinRounded -= size;
+			if (zMinCeil >= size)
+				zMinCeil -= size;
 			else
 			{
-				zMaxRounded -= size;
+				zMaxCeil -= size;
 				index += 2;
 			}
-			if (yMinRounded >= size)
-				yMinRounded -= size;
+			if (yMinCeil >= size)
+				yMinCeil -= size;
 			else
 			{
-				yMaxRounded -= size;
+				yMaxCeil -= size;
 				index += 4;
 			}
 			
@@ -268,11 +269,11 @@ public class Octree extends Tree
 		if (bounds[0][0] < min[0]) xMinExpansion = (min[0] - bounds[0][0]) / sideLength;
 		if (bounds[0][1] > max[0]) xMaxExpansion = (bounds[0][1] - max[0]) / sideLength;
 		
-		if (bounds[1][0] < min[1]) xMinExpansion = (min[1] - bounds[1][0]) / sideLength;
-		if (bounds[1][1] > max[1]) xMaxExpansion = (bounds[1][1] - max[1]) / sideLength;
+		if (bounds[1][0] < min[1]) zMinExpansion = (min[1] - bounds[1][0]) / sideLength;
+		if (bounds[1][1] > max[1]) zMaxExpansion = (bounds[1][1] - max[1]) / sideLength;
 		
-		if (bounds[2][0] < min[2]) xMinExpansion = (min[2] - bounds[2][0]) / sideLength;
-		if (bounds[2][1] > max[2]) xMaxExpansion = (bounds[2][1] - max[2]) / sideLength;
+		if (bounds[2][0] < min[2]) yMinExpansion = (min[2] - bounds[2][0]) / sideLength;
+		if (bounds[2][1] > max[2]) yMaxExpansion = (bounds[2][1] - max[2]) / sideLength;
 		
 		if (xMinExpansion != 0 ||
 			zMinExpansion != 0 ||
@@ -293,85 +294,406 @@ public class Octree extends Tree
 	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------
-		add()
+		add() SINGLE BLOCK
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
+	
+	
+	/**
+	 * 
+	 * @param node
+	 * @param half
+	 * @param node_minX
+	 * @param node_minZ
+	 * @param node_maxX
+	 * @param node_maxZ
+	 * @param blockX
+	 * @param blockZ
+	 */
+	protected void add(Node node, 
+					   int half,
+					   int node_minX, int node_minZ, int node_minY, int node_maxX, int node_maxZ, int node_maxY, 
+					   int blockX, int blockZ, int blockY
+					   )
+	{
+		if (node.full) return;
+		if (node.children == null) node.children = Node.emptyNodeArray(4);
+		
+		int index = 0;
+		
+		if (node_minX  + half > blockX)
+			node_maxX -= half;
+		else
+		{
+			node_minX += half;
+			index += 1;
+		}
+		if (node_minZ  + half > blockZ)
+			node_maxZ -= half;
+		else
+		{
+			node_minZ += half;
+			index += 2;
+		}
+		if (node_minY  + half > blockY)
+			node_maxY -= half;
+		else
+		{
+			node_minY += half;
+			index += 4;
+		}
+		
+		if (half > 1) add(node.children[index],
+						  half >>>= 1,
+						  node_minX, node_minZ, node_minY, node_maxX, node_maxZ, node_maxY,
+						  blockX, blockZ, blockY
+						  );
+		else
+		{
+			node.children[index].full = true;
+			for (Node child : node.children)
+				if (!child.full)
+					return;
+			
+			node.full = true;
+			node.children = null;
+		}
+	}
 	
 	
 	@Override
 	public void add(int... coords) 
 	{
-expandAsNeeded(coords);
+		expandAsNeeded(coords);
 		
-		Node node = root;
-		
-		int[] min = this.min;
-		int[] max = this.max;
-		
-		int size  = max[0] - min[0] + 1;
-		int half  = size / 2;
-		int index = 0;
-		
-		outerloop:
-		while (true)
+		add(root,
+			(max[0] - min[0] + 1) / 2,
+			min[0], min[1], min[2], max[0], max[1], max[2],
+			coords[0], coords[1], coords[2]
+			);
+	}
+	
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		add() BOUNDED SELECTION
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
+	/**
+	 * 
+	 * @param node
+	 * @param half
+	 * @param node_minX
+	 * @param node_minZ
+	 * @param node_minY
+	 * @param node_maxX
+	 * @param node_maxZ
+	 * @param node_maxY
+	 * @param sel_minX
+	 * @param sel_minZ
+	 * @param sel_minY
+	 * @param sel_maxX
+	 * @param sel_maxZ
+	 * @param sel_maxY
+	 */
+	protected void add(Node node, 
+					   int half,
+					   int node_minX, int node_minZ, int node_minY, int node_maxX, int node_maxZ, int node_maxY,
+					   int sel_minX,  int sel_minZ,  int sel_minY,  int sel_maxX,  int sel_maxZ,  int sel_maxY
+					   )
+	{
+		if (node.full) return;
+		if (node_minX >= sel_minX)
 		{
-			if (node.full) return;
-			if (node.children.length == 0) node.children = Node.emptyNodeArray(8);
-			
-			if ((min[0] + half) > coords[0])
-				max[0] -= half;
-			else
+			if (node_maxX <= sel_maxX)
 			{
-				min[0] += half;
-				index  += 1;
-			}
-			if ((min[1] + half) > coords[1])
-				max[1] -= half;
-			else
-			{
-				min[1] += half;
-				index  += 2;
-			}
-			if ((min[2] + half) > coords[2])
-				max[2] -= half;
-			else
-			{
-				min[2] += half;
-				index  += 4;
-			}
-			
-			if ((size >>>= 1) > 1)
-			{
-				node = node.children[index];
-				half = size / 2;
-			}
-			else
-			{
-				node.children[index].full = true;
-				
-				for (Node child : node.children)
+				if (node_minZ >= sel_minZ)
 				{
-					if (!child.full)
+					if (node_maxZ <= sel_maxZ)
 					{
-						break outerloop;
+						if (node_minY >= sel_minY)
+						{
+							if (node_maxY <= sel_maxY)
+							{
+								node.full = true;
+								node.children = null;
+							}
+							return;
+						}
+						if (node_maxY < sel_minY)
+							return;
 					}
+					if (node_minY > sel_maxY || node_maxY < sel_minY)
+						return;
 				}
-				node.full = true;
-				node.children = new Node[0];
+				if (node_maxZ < sel_minZ || node_minY > sel_maxY || node_maxY < sel_minY)
+					return;
 			}
+			if (node_minZ > sel_maxZ || node_maxZ < sel_minZ || node_minY > sel_maxY || node_maxY < sel_minY)
+				return;
+		}
+		if (node_maxX < sel_minX || node_minZ > sel_maxZ || node_maxZ < sel_minZ || node_minY > sel_maxY || node_maxY < sel_minY)
+			return;
+		
+		if (node.children == null) 
+			node.children = Node.emptyNodeArray(8);
+		
+		int half_minX = min[0] + half,
+			half_maxX = half_minX - 1,
+			half_minZ = min[1] + half,
+			half_maxZ = half_minZ - 1,
+			half_minY = min[2] + half,
+			half_maxY = half_minY - 1;
+		
+		half >>>= 1;
+		
+		
+		/* child index:
+									  Y → Y
+			X         →         X				X         →         X
+		  Z	╔═════════╦═════════╗			  Z	╔═════════╦═════════╗
+			║         ║         ║				║         ║         ║
+			║    0    ║    1    ║				║    4    ║    5    ║
+			║         ║         ║				║         ║         ║
+		  ↓	╠═════════╬═════════╣			  ↓	╠═════════╬═════════╣
+			║         ║         ║				║         ║         ║
+			║    2    ║    3    ║				║    6    ║    7    ║
+			║         ║         ║				║         ║         ║
+		  Z	╚═════════╩═════════╝			  Z	╚═════════╩═════════╝*/
+		
+		add(node.children[0],
+			half,
+			node_minX, node_minZ, node_minY, half_maxX, half_maxZ, half_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[1],
+			half,
+			half_minX, node_minZ, node_minY, node_maxX, half_maxZ, half_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[2],
+			half,
+			node_minX, half_minZ, node_minY, half_maxX, node_maxZ, half_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[3],
+			half,
+			half_minX, half_minZ, node_minY, node_maxX, node_maxZ, half_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[4],
+			half,
+			node_minX, node_minZ, half_minY, half_maxX, half_maxZ, node_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[5],
+			half,
+			half_minX, node_minZ, half_minY, node_maxX, half_maxZ, node_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[6],
+			half,
+			node_minX, half_minZ, half_minY, half_maxX, node_maxZ, node_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[7],
+			half,
+			half_minX, half_minZ, half_minY, node_maxX, node_maxZ, node_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		if (node.children[0].full && node.children[1].full && node.children[2].full && node.children[3].full &&
+			node.children[4].full && node.children[5].full && node.children[6].full && node.children[7].full)
+		{
+			node.full = true;
+			node.children = null;
 		}
 	}
-
+	
+	
 	@Override
 	public void add(int[]... bounds) 
 	{
 		expandAsNeeded(bounds);
+		
+		add(root, 
+			(max[0] - min[0] + 1),
+			min[0], min[1], min[2], max[0], max[1], max[2], 
+			bounds[0][0], bounds[1][0], bounds[2][0], bounds[0][1], bounds[1][1], bounds[2][1]
+			);
 	}
-
+	
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		add() COMPLEX BOUNDED SELECTION
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
+	/**
+	 * 
+	 * @param node
+	 * @param half
+	 * @param node_minX
+	 * @param node_minZ
+	 * @param node_minY
+	 * @param node_maxX
+	 * @param node_maxZ
+	 * @param node_maxY
+	 * @param sel_minX
+	 * @param sel_minZ
+	 * @param sel_minY
+	 * @param sel_maxX
+	 * @param sel_maxZ
+	 * @param sel_maxY
+	 * @param blocks
+	 */
+	protected void add(Node node, 
+					   int half,
+					   int node_minX, int node_minZ, int node_minY, int node_maxX, int node_maxZ, int node_maxY,
+					   int sel_minX,  int sel_minZ,  int sel_minY,  int sel_maxX,  int sel_maxZ,  int sel_maxY,
+					   BitSet blocks
+					   )
+	{
+		if (node.full) return;
+		if (node_minX >= sel_minX)
+		{
+			if (node_maxX <= sel_maxX)
+			{
+				if (node_minZ >= sel_minZ)
+				{
+					if (node_maxZ <= sel_maxZ)
+					{
+						if (node_minY >= sel_minY)
+						{
+							if (node_maxY <= sel_maxY)
+							{
+								node.full = true;
+								node.children = null;
+							}
+							return;
+						}
+						if (node_maxY < sel_minY)
+							return;
+					}
+					if (node_minY > sel_maxY || node_maxY < sel_minY)
+						return;
+				}
+				if (node_maxZ < sel_minZ || node_minY > sel_maxY || node_maxY < sel_minY)
+					return;
+			}
+			if (node_minZ > sel_maxZ || node_maxZ < sel_minZ || node_minY > sel_maxY || node_maxY < sel_minY)
+				return;
+		}
+		if (node_maxX < sel_minX || node_minZ > sel_maxZ || node_maxZ < sel_minZ || node_minY > sel_maxY || node_maxY < sel_minY)
+			return;
+		
+		if (node.children == null) 
+			node.children = Node.emptyNodeArray(8);
+		
+		int half_minX = min[0] + half,
+			half_maxX = half_minX - 1,
+			half_minZ = min[1] + half,
+			half_maxZ = half_minZ - 1,
+			half_minY = min[2] + half,
+			half_maxY = half_minY - 1;
+		
+		half >>>= 1;
+		
+		
+		/* child index:
+									  Y → Y
+			X         →         X				X         →         X
+		  Z	╔═════════╦═════════╗			  Z	╔═════════╦═════════╗
+			║         ║         ║				║         ║         ║
+			║    0    ║    1    ║				║    4    ║    5    ║
+			║         ║         ║				║         ║         ║
+		  ↓	╠═════════╬═════════╣			  ↓	╠═════════╬═════════╣
+			║         ║         ║				║         ║         ║
+			║    2    ║    3    ║				║    6    ║    7    ║
+			║         ║         ║				║         ║         ║
+		  Z	╚═════════╩═════════╝			  Z	╚═════════╩═════════╝*/
+		
+		add(node.children[0],
+			half,
+			node_minX, node_minZ, node_minY, half_maxX, half_maxZ, half_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[1],
+			half,
+			half_minX, node_minZ, node_minY, node_maxX, half_maxZ, half_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[2],
+			half,
+			node_minX, half_minZ, node_minY, half_maxX, node_maxZ, half_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[3],
+			half,
+			half_minX, half_minZ, node_minY, node_maxX, node_maxZ, half_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[4],
+			half,
+			node_minX, node_minZ, half_minY, half_maxX, half_maxZ, node_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[5],
+			half,
+			half_minX, node_minZ, half_minY, node_maxX, half_maxZ, node_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[6],
+			half,
+			node_minX, half_minZ, half_minY, half_maxX, node_maxZ, node_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		add(node.children[7],
+			half,
+			half_minX, half_minZ, half_minY, node_maxX, node_maxZ, node_maxY,
+			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
+			);
+		
+		if (node.children[0].full && node.children[1].full && node.children[2].full && node.children[3].full &&
+			node.children[4].full && node.children[5].full && node.children[6].full && node.children[7].full)
+		{
+			node.full = true;
+			node.children = null;
+		}
+	}
+	
+	
 	@Override
 	public void add(BitSet blocks, int[]... bounds) 
 	{
 		expandAsNeeded(bounds);
+		
+		add(root, 
+			(max[0] - min[0] + 1),
+			min[0], min[1], min[2], max[0], max[1], max[2], 
+			bounds[0][0], bounds[1][0], bounds[2][0], bounds[0][1], bounds[1][1], bounds[2][1],
+			blocks
+			);
 	}
 
 	
@@ -385,12 +707,11 @@ expandAsNeeded(coords);
 	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
-	
-	@Override
-	public void trimAsNeeded() 
-	{
-		// TODO Auto-generated method stub
-	}
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		remove() SINGLE BLOCK
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
 	
 
 	@Override
@@ -398,13 +719,31 @@ expandAsNeeded(coords);
 	{
 		// TODO Auto-generated method stub
 	}
-
+	
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		remove() BOUNDED SELECTION
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
 	@Override
 	public void remove(int[]... bounds) 
 	{
 		// TODO Auto-generated method stub
 	}
-
+	
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		remove() COMPLEX BOUNDED SELECTION
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
 	@Override
 	public void remove(BitSet blocks, int[]... bounds) 
 	{
