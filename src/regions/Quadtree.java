@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.BitSet;
 
+import regions.Tree.Node;
+
 public class Quadtree extends Tree
 {
 	/*----------------------------------------------------------------------------
@@ -292,12 +294,13 @@ public class Quadtree extends Tree
 		else
 		{
 			node.children[index].full = true;
-			for (Node child : node.children)
-				if (!child.full)
-					return;
-			
-			node.full = true;
-			node.children = null;
+			if (node.children[0].full && node.children[1].full && 
+				node.children[2].full && node.children[3].full
+				)
+			{
+				node.full = true;
+				node.children = null;
+			}
 		}
 	}
 	
@@ -413,7 +416,9 @@ public class Quadtree extends Tree
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
-		if (node.children[0].full && node.children[1].full && node.children[2].full && node.children[3].full)
+		if (node.children[0].full && node.children[1].full && 
+			node.children[2].full && node.children[3].full
+			)
 		{
 			node.full = true;
 			node.children = null;
@@ -427,7 +432,7 @@ public class Quadtree extends Tree
 		expandAsNeeded(bounds);
 		
 		add(root,
-			(max[0] - min[0] + 1),
+			(max[0] - min[0] + 1) / 2,
 			min[0], min[1], max[0], max[1], 
 			bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1]
 			);
@@ -530,7 +535,9 @@ public class Quadtree extends Tree
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
-		if (node.children[0].full && node.children[1].full && node.children[2].full && node.children[3].full)
+		if (node.children[0].full && node.children[1].full && 
+			node.children[2].full && node.children[3].full
+			)
 		{
 			node.full = true;
 			node.children = null;
@@ -544,7 +551,7 @@ public class Quadtree extends Tree
 		expandAsNeeded(bounds);
 		
 		add(root,
-			(max[0] - min[0] + 1),
+			(max[0] - min[0] + 1) / 2,
 			min[0], min[1], max[0], max[1],
 			bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1],
 			blocks
@@ -561,6 +568,70 @@ public class Quadtree extends Tree
 	║ ║																							 ║ ║
 	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		remove() SINGLE BLOCK
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
+	@Override
+	public void trimAsNeeded()
+	{
+		int half;
+		
+		while (!root.full && root.children != null)
+		{
+			half = (max[0] - min[0] + 1) / 2;
+			if (root.children[0].children != null)
+			{
+				if (root.children[1].children == null &&
+					root.children[2].children == null &&
+					root.children[3].children == null
+					)
+				{
+					root.children = root.children[0].children;
+					max[0] -= half;
+					max[1] -= half;
+					continue;
+				}
+			}
+			
+			else if (root.children[1].children != null)
+			{
+				if (root.children[2].children == null &&
+					root.children[3].children == null
+					)
+				{
+					root.children = root.children[1].children;
+					min[0] += half;
+					max[1] -= half;
+					continue;
+				}
+			}
+			
+			else if (root.children[2].children != null)
+			{
+				if (root.children[3].children == null)
+				{
+					root.children = root.children[2].children;
+					max[0] -= half;
+					min[1] += half;
+					continue;
+				}
+			}
+			
+			else if (root.children[3].children != null)
+			{
+				root.children = root.children[3].children;
+				min[0] += half;
+				min[1] += half;
+			}
+		}
+	}
+	
+	
 	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------
@@ -618,12 +689,13 @@ public class Quadtree extends Tree
 		else
 		{
 			node.children[index].full = false;
-			for (Node child : node.children)
-				if (child.full)
-					return;
-			
-			node.full = false;
-			node.children = null;
+			if (node.children[0].children == null && node.children[1].children == null && 
+				node.children[2].children == null && node.children[3].children == null
+				)
+			{
+				node.full = false;
+				node.children = null;
+			}
 		}
 	}
 	
@@ -649,10 +721,116 @@ public class Quadtree extends Tree
 	----------------------------------------------------------------------------*/
 	
 	
+	/**
+	 * 
+	 * @param node
+	 * @param half
+	 * @param node_minX
+	 * @param node_minZ
+	 * @param node_maxX
+	 * @param node_maxZ
+	 * @param sel_minX
+	 * @param sel_minZ
+	 * @param sel_maxX
+	 * @param sel_maxZ
+	 */
+	protected void remove(Node node, 
+						  int half,
+						  int node_minX, int node_minZ, int node_maxX, int node_maxZ,
+						  int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ
+						  )
+	{
+		if (node.children == null) return;
+		if (node_minX >= sel_minX)
+		{
+			if (node_maxX <= sel_maxX)
+			{
+				if (node_minZ >= sel_minZ)
+				{
+					if (node_maxZ <= sel_maxZ)
+					{
+						node.full = false;
+						node.children = null;
+					}
+					return;
+				}
+				if (node_maxZ < sel_minZ)
+					return;
+			}
+			if (node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+				return;
+		}
+		if (node_maxX < sel_minX || node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+			return;
+		
+		if (node.full) 
+			node.children = Node.emptyNodeArray(4);
+		
+		int half_minX = min[0] + half, 
+			half_maxX = half_minX - 1,
+			half_minZ = min[1] + half, 
+			half_maxZ = half_minZ - 1;
+		
+		half >>>= 1;
+		
+		
+		/* child index:
+		
+			X         →         X
+		  Z	╔═════════╦═════════╗
+			║         ║         ║
+			║    0    ║    1    ║
+			║         ║         ║
+		  ↓	╠═════════╬═════════╣
+			║         ║         ║
+			║    2    ║    3    ║
+			║         ║         ║
+		  Z	╚═════════╩═════════╝*/
+		
+		remove(node.children[0],
+			   half,
+			   node_minX, node_minZ, half_maxX, half_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+			   );
+		
+		remove(node.children[1],
+			   half,
+			   half_minX, node_minZ, node_maxX, half_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+			   );
+		
+		remove(node.children[2],
+			   half,
+			   node_minX, half_minZ, half_maxX, node_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+			   );
+		
+		remove(node.children[3],
+			   half,
+			   half_minX, half_minZ, node_maxX, node_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+			   );
+		
+		if (node.children[0].children == null && node.children[1].children == null && 
+			node.children[2].children == null && node.children[3].children == null
+			)
+		{
+			node.full = false;
+			node.children = null;
+		}
+	}
+	
+	
 	@Override
 	public void remove(int[]... bounds) 
 	{
-		// TODO Auto-generated method stub
+		remove(root,
+			   (max[0] - min[0] + 1) / 2,
+			   this.min[0], this.min[1], this.max[0], this.max[1],
+			   bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1]
+			   );
+		
+		trimAsNeeded();
 	}
 	
 	
@@ -664,9 +842,118 @@ public class Quadtree extends Tree
 	----------------------------------------------------------------------------*/
 	
 	
+	/**
+	 * 
+	 * @param node
+	 * @param half
+	 * @param node_minX
+	 * @param node_minZ
+	 * @param node_maxX
+	 * @param node_maxZ
+	 * @param sel_minX
+	 * @param sel_minZ
+	 * @param sel_maxX
+	 * @param sel_maxZ
+	 * @param blocks
+	 */
+	protected void remove(Node node, 
+						  int half,
+						  int node_minX, int node_minZ, int node_maxX, int node_maxZ,
+						  int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ,
+						  BitSet blocks
+						  )
+	{
+		if (node.children == null) return;
+		if (node_minX >= sel_minX)
+		{
+			if (node_maxX <= sel_maxX)
+			{
+				if (node_minZ >= sel_minZ)
+				{
+					if (node_maxZ <= sel_maxZ)
+					{
+						node.full = false;
+						node.children = null;
+					}
+					return;
+				}
+				if (node_maxZ < sel_minZ)
+					return;
+			}
+			if (node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+				return;
+		}
+		if (node_maxX < sel_minX || node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+			return;
+		
+		if (node.full) 
+			node.children = Node.emptyNodeArray(4);
+		
+		int half_minX = min[0] + half, 
+			half_maxX = half_minX - 1,
+			half_minZ = min[1] + half, 
+			half_maxZ = half_minZ - 1;
+		
+		half >>>= 1;
+		
+		
+		/* child index:
+		
+			X         →         X
+		  Z	╔═════════╦═════════╗
+			║         ║         ║
+			║    0    ║    1    ║
+			║         ║         ║
+		  ↓	╠═════════╬═════════╣
+			║         ║         ║
+			║    2    ║    3    ║
+			║         ║         ║
+		  Z	╚═════════╩═════════╝*/
+		
+		remove(node.children[0],
+			   half,
+			   node_minX, node_minZ, half_maxX, half_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+			   );
+		
+		remove(node.children[1],
+			   half,
+			   half_minX, node_minZ, node_maxX, half_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+			   );
+		
+		remove(node.children[2],
+			   half,
+			   node_minX, half_minZ, half_maxX, node_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+			   );
+		
+		remove(node.children[3],
+			   half,
+			   half_minX, half_minZ, node_maxX, node_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+			   );
+		
+		if (node.children[0].children == null && node.children[1].children == null && 
+			node.children[2].children == null && node.children[3].children == null
+			)
+		{
+			node.full = false;
+			node.children = null;
+		}
+	}
+	
+	
 	@Override
 	public void remove(BitSet blocks, int[]... bounds) 
 	{
-		// TODO Auto-generated method stub
+		remove(root,
+			   (max[0] - min[0] + 1) / 2,
+			   this.min[0], this.min[1], this.max[0], this.max[1],
+			   bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1],
+			   blocks
+			   );
+		
+		trimAsNeeded();
 	}
 }

@@ -351,12 +351,15 @@ public class Octree extends Tree
 		else
 		{
 			node.children[index].full = true;
-			for (Node child : node.children)
-				if (!child.full)
-					return;
-			
-			node.full = true;
-			node.children = null;
+			if (node.children[0].full && node.children[1].full && 
+				node.children[2].full && node.children[3].full &&
+				node.children[4].full && node.children[5].full && 
+				node.children[6].full && node.children[7].full
+				)
+			{
+				node.full = true;
+				node.children = null;
+			}
 		}
 	}
 	
@@ -512,8 +515,11 @@ public class Octree extends Tree
 			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
 			);
 		
-		if (node.children[0].full && node.children[1].full && node.children[2].full && node.children[3].full &&
-			node.children[4].full && node.children[5].full && node.children[6].full && node.children[7].full)
+		if (node.children[0].full && node.children[1].full && 
+			node.children[2].full && node.children[3].full &&
+			node.children[4].full && node.children[5].full && 
+			node.children[6].full && node.children[7].full
+			)
 		{
 			node.full = true;
 			node.children = null;
@@ -674,8 +680,11 @@ public class Octree extends Tree
 			sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY
 			);
 		
-		if (node.children[0].full && node.children[1].full && node.children[2].full && node.children[3].full &&
-			node.children[4].full && node.children[5].full && node.children[6].full && node.children[7].full)
+		if (node.children[0].full && node.children[1].full && 
+			node.children[2].full && node.children[3].full &&
+			node.children[4].full && node.children[5].full && 
+			node.children[6].full && node.children[7].full
+			)
 		{
 			node.full = true;
 			node.children = null;
@@ -706,6 +715,141 @@ public class Octree extends Tree
 	║ ║																							 ║ ║
 	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		remove() SINGLE BLOCK
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	
+	@Override
+	public void trimAsNeeded()
+	{
+		int half;
+		
+		while (!root.full && root.children != null)
+		{
+			half = (max[0] - min[0] + 1) / 2;
+			if (root.children[0].children != null)
+			{
+				if (root.children[1].children == null &&
+					root.children[2].children == null &&
+					root.children[3].children == null &&
+					root.children[4].children == null &&
+					root.children[5].children == null &&
+					root.children[6].children == null &&
+					root.children[7].children == null
+					)
+				{
+					root.children = root.children[0].children;
+					max[0] -= half;
+					max[1] -= half;
+					max[2] -= half;
+					continue;
+				}
+			}
+			
+			else if (root.children[1].children != null)
+			{
+				if (root.children[2].children == null &&
+					root.children[3].children == null &&
+					root.children[4].children == null &&
+					root.children[5].children == null &&
+					root.children[6].children == null &&
+					root.children[7].children == null
+					)
+				{
+					root.children = root.children[1].children;
+					min[0] += half;
+					max[1] -= half;
+					max[2] -= half;
+					continue;
+				}
+			}
+			
+			else if (root.children[2].children != null)
+			{
+				if (root.children[3].children == null &&
+					root.children[4].children == null &&
+					root.children[5].children == null &&
+					root.children[6].children == null &&
+					root.children[7].children == null)
+				{
+					root.children = root.children[2].children;
+					max[0] -= half;
+					min[1] += half;
+					max[2] -= half;
+					continue;
+				}
+			}
+			
+			else if (root.children[3].children != null)
+			{
+				if (root.children[4].children == null &&
+					root.children[5].children == null &&
+					root.children[6].children == null &&
+					root.children[7].children == null)
+				{
+					root.children = root.children[3].children;
+					max[0] -= half;
+					min[1] += half;
+					max[2] -= half;
+					continue;
+				}
+			}
+			
+			if (root.children[4].children != null)
+			{
+				if (root.children[5].children == null &&
+					root.children[6].children == null &&
+					root.children[7].children == null
+					)
+				{
+					root.children = root.children[4].children;
+					max[0] -= half;
+					max[1] -= half;
+					min[2] += half;
+					continue;
+				}
+			}
+			
+			else if (root.children[5].children != null)
+			{
+				if (root.children[6].children == null &&
+					root.children[7].children == null
+					)
+				{
+					root.children = root.children[5].children;
+					min[0] += half;
+					max[1] -= half;
+					min[2] += half;
+					continue;
+				}
+			}
+			
+			else if (root.children[6].children != null)
+			{
+				if (root.children[7].children == null)
+				{
+					root.children = root.children[6].children;
+					max[0] -= half;
+					min[1] += half;
+					min[2] += half;
+					continue;
+				}
+			}
+			
+			else if (root.children[7].children != null)
+			{
+				root.children = root.children[7].children;
+				max[0] -= half;
+				min[1] += half;
+				min[2] += half;
+				continue;
+			}
+		}
+	}
 	
 	/*----------------------------------------------------------------------------
 	------------------------------------------------------------------------------

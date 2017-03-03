@@ -448,7 +448,7 @@ public abstract class Tree
 	/**
 	 * 
 	 */
-	public void trimAsNeeded() //TODO replace with abstract, adjust bounds
+	public void trimAsNeededOLD() //TODO replace with abstract, adjust bounds
 	{
 		outerloop:
 		while (true)
@@ -470,6 +470,12 @@ public abstract class Tree
 			}
 		}
 	}
+	
+	
+	/**
+	 * 
+	 */
+	public abstract void trimAsNeeded();
 	
 	
 	/**
