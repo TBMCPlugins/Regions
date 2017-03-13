@@ -77,12 +77,54 @@ public class Quadtree extends Tree
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
 	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		contains() SINGLE BLOCK
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
 	@Override
 	public boolean contains(int... coords)
 	{
-		//TODO finish method
-		return false;
+		if (coords[0] < min[0] || coords[0] >= max[0] ||
+			coords[1] < min[1] || coords[1] >= max[1]
+			)
+			return false;
+		
+		int half = max[0] - min[0] >>> 1,
+			minX = min[0],
+			minZ = min[1];
+		
+		Node node = root;
+		int index;
+		while (true)
+		{
+			if (node.full) return true;
+			else if (node.children == null) 
+				return false;
+			
+			index = 0;
+			if (minX + half <= coords[0])
+			{
+				minX += half;
+				index += 1;
+			}
+			if (minZ + half <= coords[1])
+			{
+				minZ += half;
+				index += 2;
+			}
+			half >>>= 1;
+			node = node.children[index];
+		}
 	}
+	
+	
+	/*----------------------------------------------------------------------------
+	------------------------------------------------------------------------------
+		contains() BOUNDED SELECTION
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
 	
 	
 	/*
@@ -103,43 +145,42 @@ public class Quadtree extends Tree
 	/**
 	 * Method for sharing logic among the variants of expandAsNeeded()
 	 * 
-	 * @param xMinExpansion
-	 * @param zMinExpansion
-	 * @param xMaxExpansion
-	 * @param zMaxExpansion
+	 * @param xMinPercent
+	 * @param zMinPercent
+	 * @param xMaxPercent
+	 * @param zMaxPercent
 	 */
-	protected void expand(double xMinExpansion, double zMinExpansion, double xMaxExpansion, double zMaxExpansion)
+	protected void expand(double xMinPercent, double zMinPercent, double xMaxPercent, double zMaxPercent)
 	{
-		int xMinCeil = (int) Math.ceil(xMinExpansion),
-			zMinCeil = (int) Math.ceil(zMinExpansion),
-			xMaxCeil = (int) Math.ceil(xMaxExpansion),
-			zMaxCeil = (int) Math.ceil(zMaxExpansion),
+		int xMin = (int) Math.ceil(xMinPercent),
+			zMin = (int) Math.ceil(zMinPercent),
+			xMax = (int) Math.ceil(xMaxPercent),
+			zMax = (int) Math.ceil(zMaxPercent),
 			
-			size = nextPowerOfTwo(xMinCeil + xMaxCeil + 1, 
-								  zMinCeil + zMaxCeil + 1
+			size = nextPowerOfTwo(xMin + xMax + 1, 
+								  zMin + zMax + 1
 								  ),
 		
-			xMargin = size - (xMinCeil + xMaxCeil + 1),
-			zMargin = size - (zMinCeil + zMaxCeil + 1),
+			xMargin = size - (xMin + xMax + 1),
+			zMargin = size - (zMin + zMax + 1),
 			xMarginHalf = xMargin / 2,
 			zMarginHalf = zMargin / 2;
 		
 		
-		xMinCeil += xMarginHalf;
-		zMinCeil += zMarginHalf;
-		xMaxCeil += xMarginHalf;
-		zMaxCeil += zMarginHalf;
+		xMin += xMarginHalf;
+		zMin += zMarginHalf;
+		xMax += xMarginHalf;
+		zMax += zMarginHalf;
+		if (xMargin % 2 == 1) if (xMin - xMinPercent > xMax - xMaxPercent) xMin++; else xMax++;
+		if (zMargin % 2 == 1) if (zMin - zMinPercent > zMax - zMaxPercent) zMin++; else zMax++;
 		
-		if (xMargin % 2 == 1) if (xMinCeil - xMinExpansion > xMaxCeil - xMaxExpansion) xMinCeil++; else xMaxCeil++;
-		
-		if (zMargin % 2 == 1) if (zMinCeil - zMinExpansion > zMaxCeil - zMaxExpansion) zMinCeil++; else zMaxCeil++;
-		
-		int sideLength = max[0] - min[0] + 1;
-		min[0] -= (sideLength * xMinCeil);
-		min[1] -= (sideLength * zMinCeil);
-		max[0] += (sideLength * xMaxCeil);
-		max[1] += (sideLength * zMaxCeil);
-		
+		{
+			int sideLength = max[0] - min[0];
+			min[0] -= (sideLength * xMin);
+			min[1] -= (sideLength * zMin);
+			max[0] += (sideLength * xMax);
+			max[1] += (sideLength * zMax);
+		}
 		
 		int index;
 		Node[] children;
@@ -150,18 +191,18 @@ public class Quadtree extends Tree
 			size >>>= 1;
 			index = 0;
 			
-			if (xMinCeil >= size)
-				xMinCeil -= size;
+			if (xMin >= size)
+				xMin -= size;
 			else
 			{
-				xMaxCeil -= size;
+				xMax -= size;
 				index += 1;
 			}
-			if (zMinCeil >= size)
-				zMinCeil -= size;
+			if (zMin >= size)
+				zMin -= size;
 			else
 			{
-				zMaxCeil -= size;
+				zMax -= size;
 				index += 2;
 			}
 			
@@ -188,56 +229,56 @@ public class Quadtree extends Tree
 	@Override
 	protected void expandAsNeeded(int... coords) 
 	{
-		int sideLength = max[0] - min[0] + 1;
+		int sideLength = max[0] - min[0];
 		
-		double	xMinExpansion = 0,
-				zMinExpansion = 0,
-				xMaxExpansion = 0,
-				zMaxExpansion = 0;
+		double	xMinPercent = 0,
+				zMinPercent = 0,
+				xMaxPercent = 0,
+				zMaxPercent = 0;
 		
-		if 		(coords[0] < min[0]) xMinExpansion = (min[0] - coords[0]) / sideLength;
-		else if (coords[0] > max[0]) xMaxExpansion = (coords[0] - max[0]) / sideLength;
+		if 		(coords[0] <  min[0]) xMinPercent = (min[0] - coords[0]) / sideLength;
+		else if (coords[0] >= max[0]) xMaxPercent = (coords[0] - max[0]) / sideLength;
 		
-		if 		(coords[1] < min[1]) zMinExpansion = (min[1] - coords[1]) / sideLength;
-		else if	(coords[1] > max[1]) zMaxExpansion = (coords[1] - max[1]) / sideLength;
+		if 		(coords[1] <  min[1]) zMinPercent = (min[1] - coords[1]) / sideLength;
+		else if	(coords[1] >= max[1]) zMaxPercent = (coords[1] - max[1]) / sideLength;
 		
-		if (xMinExpansion != 0 ||
-			zMinExpansion != 0 ||
-			xMaxExpansion != 0 ||
-			zMaxExpansion != 0
+		if (xMinPercent != 0 ||
+			zMinPercent != 0 ||
+			xMaxPercent != 0 ||
+			zMaxPercent != 0
 			)
-			expand(xMinExpansion, 
-				   zMinExpansion, 
-				   xMaxExpansion, 
-				   zMaxExpansion);
+			expand(xMinPercent, 
+				   zMinPercent, 
+				   xMaxPercent, 
+				   zMaxPercent);
 	}
 	
 	
 	@Override
 	public void expandAsNeeded(int[]... bounds)
 	{
-		int sideLength = max[0] - min[0] + 1;
+		int sideLength = max[0] - min[0];
 		
-		double	xMinExpansion = 0,
-				zMinExpansion = 0,
-				xMaxExpansion = 0,
-				zMaxExpansion = 0;
+		double	xMinPercent = 0,
+				zMinPercent = 0,
+				xMaxPercent = 0,
+				zMaxPercent = 0;
 		
-		if (bounds[0][0] < min[0]) xMinExpansion = (min[0] - bounds[0][0]) / sideLength;
-		if (bounds[0][1] > max[0]) xMaxExpansion = (bounds[0][1] - max[0]) / sideLength;
+		if (bounds[0][0] <  min[0]) xMinPercent = (min[0] - bounds[0][0]) / sideLength;
+		if (bounds[0][1] >= max[0]) xMaxPercent = (bounds[0][1] - max[0]) / sideLength;
 		
-		if (bounds[1][0] < min[1]) zMinExpansion = (min[1] - bounds[1][0]) / sideLength;
-		if (bounds[1][1] > max[1]) zMaxExpansion = (bounds[1][1] - max[1]) / sideLength;
+		if (bounds[1][0] <  min[1]) zMinPercent = (min[1] - bounds[1][0]) / sideLength;
+		if (bounds[1][1] >= max[1]) zMaxPercent = (bounds[1][1] - max[1]) / sideLength;
 		
-		if (xMinExpansion != 0 ||
-			zMinExpansion != 0 ||
-			xMaxExpansion != 0 ||
-			zMaxExpansion != 0
+		if (xMinPercent != 0 ||
+			zMinPercent != 0 ||
+			xMaxPercent != 0 ||
+			zMaxPercent != 0
 			)
-			expand(xMinExpansion, 
-				   zMinExpansion, 
-				   xMaxExpansion, 
-				   zMaxExpansion);
+			expand(xMinPercent, 
+				   zMinPercent, 
+				   xMaxPercent, 
+				   zMaxPercent);
 	}
 	
 	
@@ -260,8 +301,7 @@ public class Quadtree extends Tree
 	 * @param blockX
 	 * @param blockZ
 	 */
-	protected void add(Node node, 
-					   int half,
+	protected void add(Node node, int half,
 					   int node_minX, int node_minZ, int node_maxX, int node_maxZ, 
 					   int blockX, int blockZ
 					   )
@@ -286,16 +326,17 @@ public class Quadtree extends Tree
 			index += 2;
 		}
 		
-		if (half > 1) add(node.children[index],
-						  half >>>= 1,
+		if (half > 1) add(node.children[index], half >>>= 1,
 						  node_minX, node_minZ, node_maxX, node_maxZ,
 						  blockX, blockZ
 						  );
 		else
 		{
 			node.children[index].full = true;
-			if (node.children[0].full && node.children[1].full && 
-				node.children[2].full && node.children[3].full
+			if (node.children[0].full && 
+				node.children[1].full && 
+				node.children[2].full && 
+				node.children[3].full
 				)
 			{
 				node.full = true;
@@ -310,8 +351,7 @@ public class Quadtree extends Tree
 	{
 		expandAsNeeded(coords);
 		
-		add(root,
-			(max[0] - min[0] + 1) / 2,
+		add(root, max[0] - min[0] >>> 1,
 			this.min[0], this.min[1], this.max[0], this.max[1],
 			coords[0], coords[1]
 			);
@@ -339,8 +379,7 @@ public class Quadtree extends Tree
 	 * @param sel_maxX
 	 * @param sel_maxZ
 	 */
-	protected void add(Node node, 
-					   int half,
+	protected void add(Node node, int half,
 					   int node_minX, int node_minZ, int node_maxX, int node_maxZ,
 					   int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ
 					   )
@@ -359,22 +398,20 @@ public class Quadtree extends Tree
 					}
 					return;
 				}
-				if (node_maxZ < sel_minZ)
+				if (node_maxZ <= sel_minZ)
 					return;
 			}
-			if (node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+			if (node_minZ >= sel_maxZ || node_maxZ <= sel_minZ)
 				return;
 		}
-		if (node_maxX < sel_minX || node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+		if (node_maxX <= sel_minX || node_minZ >= sel_maxZ || node_maxZ <= sel_minZ)
 			return;
 		
 		if (node.children == null) 
 			node.children = Node.emptyNodeArray(4);
 		
-		int half_minX = min[0] + half, 
-			half_maxX = half_minX - 1,
-			half_minZ = min[1] + half, 
-			half_maxZ = half_minZ - 1;
+		int midpointX = min[0] + half, 
+			midpointZ = min[1] + half;
 		
 		half >>>= 1;
 		
@@ -392,27 +429,23 @@ public class Quadtree extends Tree
 			║         ║         ║
 		  Z	╚═════════╩═════════╝*/
 		
-		add(node.children[0],
-			half,
-			node_minX, node_minZ, half_maxX, half_maxZ, 
+		add(node.children[0], half,
+			node_minX, node_minZ, midpointX, midpointZ, 
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
-		add(node.children[1],
-			half,
-			half_minX, node_minZ, node_maxX, half_maxZ, 
+		add(node.children[1], half,
+			midpointX, node_minZ, node_maxX, midpointZ, 
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
-		add(node.children[2],
-			half,
-			node_minX, half_minZ, half_maxX, node_maxZ, 
+		add(node.children[2], half,
+			node_minX, midpointZ, midpointX, node_maxZ, 
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
-		add(node.children[3],
-			half,
-			half_minX, half_minZ, node_maxX, node_maxZ, 
+		add(node.children[3], half,
+			midpointX, midpointZ, node_maxX, node_maxZ, 
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
@@ -431,8 +464,7 @@ public class Quadtree extends Tree
 	{
 		expandAsNeeded(bounds);
 		
-		add(root,
-			(max[0] - min[0] + 1) / 2,
+		add(root, max[0] - min[0] >>> 1,
 			min[0], min[1], max[0], max[1], 
 			bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1]
 			);
@@ -450,6 +482,40 @@ public class Quadtree extends Tree
 	/**
 	 * 
 	 * @param node
+	 * @param node_minX
+	 * @param node_minZ
+	 * @param node_maxX
+	 * @param node_maxZ
+	 * @param sel_minX
+	 * @param sel_minZ
+	 * @param sel_maxX
+	 * @param sel_maxZ
+	 * @param blocks
+	 * @return
+	 */
+	protected static boolean attemptAdd(Node node,
+										int node_minX, int node_minZ, int node_maxX, int node_maxZ, 
+										int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ,
+										BitSet blocks
+										)
+	{
+		int partial = _2D.compareRegion(node_minX, node_minZ, node_maxX, node_maxZ, 
+										sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+									  	blocks
+										);
+		
+		if (partial == 0) return false;
+		if (partial == 1) return true;
+		
+		node.full = true;
+		node.children = null;
+		return true;
+	}
+	
+	
+	/**
+	 * 
+	 * @param node
 	 * @param half
 	 * @param node_minX
 	 * @param node_minZ
@@ -461,43 +527,26 @@ public class Quadtree extends Tree
 	 * @param sel_maxZ
 	 * @param blocks
 	 */
-	protected void add(Node node, 
-					   int half,
+	protected void add(Node node, int half,
 					   int node_minX, int node_minZ, int node_maxX, int node_maxZ, 
 					   int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ,
 					   BitSet blocks
 					   )
 	{
-		if (node.full) return;
-		if (node_minX >= sel_minX)
-		{
-			if (node_maxX <= sel_maxX)
-			{
-				if (node_minZ >= sel_minZ)
-				{
-					if (node_maxZ <= sel_maxZ)
-					{
-						node.full = true;
-						node.children = null;
-					}
-					return;
-				}
-				if (node_maxZ < sel_minZ)
-					return;
-			}
-			if (node_minZ > sel_maxZ || node_maxZ < sel_minZ)
-				return;
-		}
-		if (node_maxX < sel_minX || node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+		if (node.full ||
+			node_minX >= sel_maxX || node_maxX <= sel_minX || 
+			node_minZ >= sel_maxZ || node_maxZ <= sel_minZ ||
+			attemptAdd(node,
+					   node_minX, node_minZ, node_maxX, node_maxZ, 
+					   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+					   blocks
+					   ))
 			return;
 		
-		if (node.children == null) 
-			node.children = Node.emptyNodeArray(4);
+		if (node.children == null) node.children = Node.emptyNodeArray(4);
 		
-		int half_minX = min[0] + half, 
-			half_maxX = half_minX - 1,
-			half_minZ = min[1] + half, 
-			half_maxZ = half_minZ - 1;
+		int midpointX = min[0] + half,
+			midpointZ = min[1] + half;
 		
 		half >>>= 1;
 		
@@ -515,23 +564,23 @@ public class Quadtree extends Tree
 			║         ║         ║
 		  Z	╚═════════╩═════════╝*/
 		
-		add(node.children[0], 
-			node_minX, node_minZ, half_maxX, half_maxZ, half, 
+		add(node.children[0], half,
+			node_minX, node_minZ, midpointX, midpointZ, 
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
-		add(node.children[1], 
-			half_minX, node_minZ, node_maxX, half_maxZ, half, 
+		add(node.children[1], half,
+			midpointX, node_minZ, node_maxX, midpointZ, 
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
-		add(node.children[2], 
-			node_minX, half_minZ, half_maxX, node_maxZ, half, 
+		add(node.children[2], half,
+			node_minX, midpointZ, midpointX, node_maxZ, 
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
-		add(node.children[3], 
-			half_minX, half_minZ, node_maxX, node_maxZ, half, 
+		add(node.children[3], half,
+			midpointX, midpointZ, node_maxX, node_maxZ, 
 			sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			);
 		
@@ -550,8 +599,7 @@ public class Quadtree extends Tree
 	{
 		expandAsNeeded(bounds);
 		
-		add(root,
-			(max[0] - min[0] + 1) / 2,
+		add(root, max[0] - min[0] >>> 1,
 			min[0], min[1], max[0], max[1],
 			bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1],
 			blocks
@@ -583,7 +631,7 @@ public class Quadtree extends Tree
 		
 		while (!root.full && root.children != null)
 		{
-			half = (max[0] - min[0] + 1) / 2;
+			half = max[0] - min[0] >>> 1;
 			if (root.children[0].children != null)
 			{
 				if (root.children[1].children == null &&
@@ -651,18 +699,17 @@ public class Quadtree extends Tree
 	 * @param blockX
 	 * @param blockZ
 	 */
-	protected void remove(Node node, 
-						  int half,
+	protected void remove(Node node, int half,
 						  int node_minX, int node_minZ, int node_maxX, int node_maxZ, 
 						  int blockX, int blockZ
 						  )
 	{
-		if (node.children == null) return;
 		if (node.full)
 		{
 			node.full = false; 
-			node.children = Node.emptyNodeArray(4);
+			node.children = Node.fullNodeArray(4);
 		}
+		else if (node.children == null) return;
 		
 		int index = 0;
 		
@@ -681,16 +728,17 @@ public class Quadtree extends Tree
 			index += 2;
 		}
 		
-		if (half > 1) remove(node.children[index],
-							 half >>>= 1,
+		if (half > 1) remove(node.children[index], half >>>= 1,
 							 node_minX, node_minZ, node_maxX, node_maxZ,
 							 blockX, blockZ
 							 );
 		else
 		{
 			node.children[index].full = false;
-			if (node.children[0].children == null && node.children[1].children == null && 
-				node.children[2].children == null && node.children[3].children == null
+			if (node.children[0].children == null && 
+				node.children[1].children == null && 
+				node.children[2].children == null && 
+				node.children[3].children == null
 				)
 			{
 				node.full = false;
@@ -703,8 +751,7 @@ public class Quadtree extends Tree
 	@Override
 	public void remove(int... coords) 
 	{
-		remove(root,
-			   (max[0] - min[0] + 1) / 2,
+		remove(root, max[0] - min[0] >>> 1,
 			   this.min[0], this.min[1], this.max[0], this.max[1],
 			   coords[0], coords[1]
 			   );
@@ -734,13 +781,14 @@ public class Quadtree extends Tree
 	 * @param sel_maxX
 	 * @param sel_maxZ
 	 */
-	protected void remove(Node node, 
-						  int half,
+	protected void remove(Node node, int half,
 						  int node_minX, int node_minZ, int node_maxX, int node_maxZ,
 						  int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ
 						  )
 	{
-		if (node.children == null) return;
+		if (!node.full && node.children == null) 
+			return;
+		
 		if (node_minX >= sel_minX)
 		{
 			if (node_maxX <= sel_maxX)
@@ -754,22 +802,23 @@ public class Quadtree extends Tree
 					}
 					return;
 				}
-				if (node_maxZ < sel_minZ)
+				if (node_maxZ <= sel_minZ)
 					return;
 			}
-			if (node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+			if (node_minZ >= sel_maxZ || node_maxZ <= sel_minZ)
 				return;
 		}
-		if (node_maxX < sel_minX || node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+		if (node_maxX <= sel_minX || node_minZ >= sel_maxZ || node_maxZ <= sel_minZ)
 			return;
 		
 		if (node.full) 
-			node.children = Node.emptyNodeArray(4);
+		{
+			node.full = false;
+			node.children = Node.fullNodeArray(4);
+		}
 		
-		int half_minX = min[0] + half, 
-			half_maxX = half_minX - 1,
-			half_minZ = min[1] + half, 
-			half_maxZ = half_minZ - 1;
+		int midpointX = min[0] + half, 
+			midpointZ = min[1] + half;
 		
 		half >>>= 1;
 		
@@ -787,27 +836,23 @@ public class Quadtree extends Tree
 			║         ║         ║
 		  Z	╚═════════╩═════════╝*/
 		
-		remove(node.children[0],
-			   half,
-			   node_minX, node_minZ, half_maxX, half_maxZ, 
+		remove(node.children[0], half,
+			   node_minX, node_minZ, midpointX, midpointZ, 
 			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			   );
 		
-		remove(node.children[1],
-			   half,
-			   half_minX, node_minZ, node_maxX, half_maxZ, 
+		remove(node.children[1], half,
+			   midpointX, node_minZ, node_maxX, midpointZ, 
 			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			   );
 		
-		remove(node.children[2],
-			   half,
-			   node_minX, half_minZ, half_maxX, node_maxZ, 
+		remove(node.children[2], half,
+			   node_minX, midpointZ, midpointX, node_maxZ, 
 			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			   );
 		
-		remove(node.children[3],
-			   half,
-			   half_minX, half_minZ, node_maxX, node_maxZ, 
+		remove(node.children[3], half,
+			   midpointX, midpointZ, node_maxX, node_maxZ, 
 			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
 			   );
 		
@@ -824,8 +869,7 @@ public class Quadtree extends Tree
 	@Override
 	public void remove(int[]... bounds) 
 	{
-		remove(root,
-			   (max[0] - min[0] + 1) / 2,
+		remove(root, max[0] - min[0] >>> 1,
 			   this.min[0], this.min[1], this.max[0], this.max[1],
 			   bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1]
 			   );
@@ -845,6 +889,40 @@ public class Quadtree extends Tree
 	/**
 	 * 
 	 * @param node
+	 * @param node_minX
+	 * @param node_minZ
+	 * @param node_maxX
+	 * @param node_maxZ
+	 * @param sel_minX
+	 * @param sel_minZ
+	 * @param sel_maxX
+	 * @param sel_maxZ
+	 * @param blocks
+	 * @return
+	 */
+	protected static boolean attemptRemove(Node node,
+										   int node_minX, int node_minZ, int node_maxX, int node_maxZ, 
+										   int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ,
+										   BitSet blocks
+										   )
+	{
+		int partial = _2D.compareRegion(node_minX, node_minZ, node_maxX, node_maxZ, 
+										sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+									  	blocks
+										);
+		
+		if (partial == 0) return false;
+		if (partial == 1) return true;
+		
+		node.full = false;
+		node.children = null;
+		return true;
+	}
+	
+	
+	/**
+	 * 
+	 * @param node
 	 * @param half
 	 * @param node_minX
 	 * @param node_minZ
@@ -856,49 +934,32 @@ public class Quadtree extends Tree
 	 * @param sel_maxZ
 	 * @param blocks
 	 */
-	protected void remove(Node node, 
-						  int half,
-						  int node_minX, int node_minZ, int node_maxX, int node_maxZ,
+	protected void remove(Node node, int half,
+						  int node_minX, int node_minZ, int node_maxX, int node_maxZ, 
 						  int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ,
 						  BitSet blocks
 						  )
 	{
-		if (node.children == null) return;
-		if (node_minX >= sel_minX)
-		{
-			if (node_maxX <= sel_maxX)
-			{
-				if (node_minZ >= sel_minZ)
-				{
-					if (node_maxZ <= sel_maxZ)
-					{
-						node.full = false;
-						node.children = null;
-					}
-					return;
-				}
-				if (node_maxZ < sel_minZ)
-					return;
-			}
-			if (node_minZ > sel_maxZ || node_maxZ < sel_minZ)
-				return;
-		}
-		if (node_maxX < sel_minX || node_minZ > sel_maxZ || node_maxZ < sel_minZ)
+		if ((!node.full && node.children == null) ||
+			node_minX >= sel_maxX || node_maxX <= sel_minX || 
+			node_minZ >= sel_maxZ || node_maxZ <= sel_minZ ||
+			attemptRemove(node,
+						  node_minX, node_minZ, node_maxX, node_maxZ, 
+						  sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+						  blocks
+						  ))
 			return;
 		
-		if (node.full) 
-			node.children = Node.emptyNodeArray(4);
+		if (node.children == null) node.children = Node.fullNodeArray(4);
 		
-		int half_minX = min[0] + half, 
-			half_maxX = half_minX - 1,
-			half_minZ = min[1] + half, 
-			half_maxZ = half_minZ - 1;
+		int midpointX = min[0] + half,
+			midpointZ = min[1] + half;
 		
 		half >>>= 1;
 		
 		
 		/* child index:
-		
+			
 			X         →         X
 		  Z	╔═════════╦═════════╗
 			║         ║         ║
@@ -910,28 +971,28 @@ public class Quadtree extends Tree
 			║         ║         ║
 		  Z	╚═════════╩═════════╝*/
 		
-		remove(node.children[0],
-			   half,
-			   node_minX, node_minZ, half_maxX, half_maxZ, 
-			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+		remove(node.children[0], half,
+			   node_minX, node_minZ, midpointX, midpointZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+			   blocks
 			   );
 		
-		remove(node.children[1],
-			   half,
-			   half_minX, node_minZ, node_maxX, half_maxZ, 
-			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+		remove(node.children[1], half,
+			   midpointX, node_minZ, node_maxX, midpointZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+			   blocks
 			   );
 		
-		remove(node.children[2],
-			   half,
-			   node_minX, half_minZ, half_maxX, node_maxZ, 
-			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+		remove(node.children[2], half,
+			   node_minX, midpointZ, midpointX, node_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+			   blocks
 			   );
 		
-		remove(node.children[3],
-			   half,
-			   half_minX, half_minZ, node_maxX, node_maxZ, 
-			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ
+		remove(node.children[3], half,
+			   midpointX, midpointZ, node_maxX, node_maxZ, 
+			   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+			   blocks
 			   );
 		
 		if (node.children[0].children == null && node.children[1].children == null && 
@@ -947,9 +1008,8 @@ public class Quadtree extends Tree
 	@Override
 	public void remove(BitSet blocks, int[]... bounds) 
 	{
-		remove(root,
-			   (max[0] - min[0] + 1) / 2,
-			   this.min[0], this.min[1], this.max[0], this.max[1],
+		remove(root, max[0] - min[0] >>> 1,
+			   min[0], min[1], max[0], max[1],
 			   bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1],
 			   blocks
 			   );

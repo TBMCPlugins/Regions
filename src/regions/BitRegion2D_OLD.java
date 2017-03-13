@@ -2,7 +2,7 @@ package regions;
 
 import java.util.BitSet;
 
-public class BitRegion3D
+public class BitRegion2D_OLD
 {
 	/*
 	╔══════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -13,13 +13,13 @@ public class BitRegion3D
 	║ ╚══════════════════════════════════════════════════════════════════════════════════════════╝ ║
 	╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 	
-	protected int[] sides;		
+	protected int[] sides;		public int[] getSides() { return sides;	}
 	
 	protected final BitSet blocks;
 	
-	protected BitRegion3D()
+	public BitRegion2D_OLD()
 	{
-		sides	= new int[] { 0, 0, 0 };
+		sides	= new int[] { 0, 0 };
 		blocks	= new BitSet();
 	}
 	
@@ -36,15 +36,6 @@ public class BitRegion3D
 	
 	
 	/**
-	 * Return side-lengths of bounding box.
-	 */
-	public int[] getSides() 
-	{
-		return sides;
-	}
-	
-	
-	/**
 	 * Get number of blocks contained in the region.
 	 */
 	public int getVolume()
@@ -58,7 +49,7 @@ public class BitRegion3D
 	 */
 	public int getBoundsVolume()
 	{
-		return (sides[0]) * (sides[1]) * (sides[2]);
+		return (sides[0]) * (sides[1]);
 	}
 	
 	
@@ -70,17 +61,14 @@ public class BitRegion3D
 	 */
 	public int[] getCoords(int index)
 	{
-		if (index++ == 0) return new int[] {0, 0, 0};//TODO do I actually need to include this method
+		if (index++ == 0) return new int[] {0, 0};
 		
-		int[] xzy = new int[3];
+		int[] xz = new int[2];
+			
+		xz[1] = index / sides[0];	if ((index = index % sides[0]) == 0) { xz[1] -= 1; 	index = sides[0]; }
+		xz[0] = index - 1;
 		
-		int crossSec = sides[0] * sides[1];
-		
-		xzy[2] = index / crossSec;	if ((index = index % crossSec) == 0) { xzy[2] -= 1;	index = crossSec; }
-		xzy[1] = index / sides[0];	if ((index = index % sides[0]) == 0) { xzy[1] -= 1;	index = sides[0]; }
-		xzy[0] = index - 1;
-		
-		return xzy;
+		return xz;
 	}
 	
 	
@@ -90,9 +78,9 @@ public class BitRegion3D
 	 * @param coordinate
 	 * @return
 	 */
-	public int getIndex(int x, int z, int y)
+	public int getIndex(int x, int z)
 	{
-		return (y * sides[0] * sides[1]) + (z * sides[0]) + x;
+		return (z * sides[0]) + x;
 	}
 	
 	
@@ -101,17 +89,15 @@ public class BitRegion3D
 	 * 
 	 * @param x
 	 * @param z
-	 * @param y
 	 * @return
 	 */
-	public boolean contains(int x, int z, int y)
+	public boolean contains(int x, int z)
 	{
 		if (0 > x || x >= sides[0] || 
-			0 > z || z >= sides[1] || 
-			0 > y || y >= sides[2]) 
+			0 > z || z >= sides[1]) 
 			return false;
 		
-		return blocks.get(getIndex(x, z, y));
+		return blocks.get(getIndex(x,z));
 	}
 	
 	
@@ -140,51 +126,38 @@ public class BitRegion3D
 	
 	/**
 	 * 
-	 * @param xMin
-	 * @param xMax
-	 * @param zMin
-	 * @param zMax
-	 * @param yMin
-	 * @param yMax
+	 * @param shift
+	 * @param fromIndex
 	 */
-	public void expand(int xMin, int xMax, int zMin, int zMax, int yMin, int yMax)
+	public void bitshift(int shift, int fromIndex)
 	{
-		final int[] newSides = new int[] { xMax - xMin + 1, 
-										   zMax - zMin + 1, 
-						   				   yMax - yMin + 1 };
+		if (shift < 1) 
+			return;
 		
-		final int yRoof = (newSides[2] - sides[2] + yMin) * newSides[0] * newSides[1];
-		final int zRoof = (newSides[1] - sides[1] + zMin) * newSides[0];
-		final int xRoof =  newSides[0] - sides[0] + xMin;
+		int toAboveThisIndex = fromIndex + shift - 1;
 		
-		final int yIncrement = yRoof + -yMin * newSides[0] * newSides[1];
-		final int zIncrement = zRoof + -zMin * newSides[0];
-		final int xIncrement = xRoof + -xMin;
-		
-		
-		
-		int index = sides[0] * sides[1] * sides[2] - 1;
-		int shift = newSides[0] * newSides[1] * newSides[2] - 1 - (yRoof + zRoof + xRoof) - index;
-		int newIndex = index + shift;
-		int x, z, y;
-		
-		for (y = sides[2]; y > 0; y--)
+		for (int i = blocks.size() + shift; i > toAboveThisIndex; i--)
 		{
-			for (z = sides[1]; z > 0; z--)
-			{
-				newIndex = index + shift;
-				for (x = sides[0]; x > 0; x--)
-				{
-					blocks.set(newIndex--, blocks.get(index--));
-				}
-				shift -= xIncrement;
-				blocks.clear(index + shift, newIndex);
-			}
-			shift -= zIncrement;
-			blocks.clear(index + shift, newIndex);
+			blocks.set(i, blocks.get(i - shift));
 		}
-		shift -= yIncrement;
-		blocks.clear(index + shift, newIndex);		
+		blocks.clear(fromIndex, toAboveThisIndex);
+	}
+	
+	
+	/**
+	 * 
+	 * @param xShift
+	 * @param zShift
+	 * @param yShift
+	 */
+	public void expand(int xMin, int xMax, int zMin, int zMax)
+	{
+		int[] newSides = new int[] {xMax - xMin + 1, 
+									zMax - zMin + 1};
+		
+		/* add empty space before each x row
+		 * add empty space at bottom
+		 */
 	}
 	
 	
@@ -192,27 +165,21 @@ public class BitRegion3D
 	 * 
 	 * @param x
 	 * @param z
-	 * @param y
 	 */
-	public void adjustBoundsIfNecessary(int x, int z, int y)
+	public void adjustBoundsIfNecessary(int x, int z)
 	{
 		if (-1 < x && x < sides[0] && 
-			-1 < z && z < sides[1] && 
-			-1 < y && y < sides[2]) 
+			-1 < z && z < sides[1]) 
 			return;
 		
 		int bX = sides[0] - 1;
 		int bZ = sides[1] - 1;
-		int bY = sides[2] - 1;
 		
 		expand(	x < 0  ? x : 0, 
 				x > bX ? x : bX,
 				
 				z < 0  ? z : 0,
-				z > bZ ? z : bZ,
-				
-				y < 0  ? y : 0,
-				y > bY ? y : bY);
+				z > bZ ? z : bZ);
 	}
 	
 	
@@ -220,30 +187,23 @@ public class BitRegion3D
 	 * 
 	 * @param minX
 	 * @param minZ
-	 * @param minY
 	 * @param maxX
 	 * @param maxZ
-	 * @param maxY
 	 */
-	public void adjustBoundsIfNecessary(int minX, int minZ, int minY, int maxX, int maxZ, int maxY)
+	public void adjustBoundsIfNecessary(int minX, int maxX, int minZ, int maxZ)
 	{
 		if (-1 < minX && maxX < sides[0] &&
-			-1 < minZ && maxZ < sides[1] && 
-			-1 < minY && maxY < sides[2]) 
+			-1 < minZ && maxZ < sides[1]) 
 			return;
 		
 		int bX = sides[0] - 1;
 		int bZ = sides[1] - 1;
-		int bY = sides[2] - 1;
 		
 		expand(	minX < 0  ? minX : 0, 
 				maxX > bX ? maxX : bX,
 				
 				minZ < 0  ? minZ : 0,
-				maxZ > bZ ? maxZ : bZ,
-				
-				minY < 0  ? minY : 0,
-				maxY > bY ? maxY : bY);
+				maxZ > bZ ? maxZ : bZ);
 	}
 	
 	
@@ -264,13 +224,12 @@ public class BitRegion3D
 	 * 
 	 * @param x
 	 * @param z
-	 * @param y
 	 */
-	public void fill(int x, int z, int y)
+	public void fill(int x, int z)
 	{
-		adjustBoundsIfNecessary(x, z, y);
+		adjustBoundsIfNecessary(x, z);
 		
-		blocks.set(getIndex(x, z, y));
+		blocks.set(getIndex(x, z));
 	}
 	
 	
@@ -279,30 +238,24 @@ public class BitRegion3D
 	 * 
 	 * @param minX
 	 * @param minZ
-	 * @param minY
 	 * @param maxX
 	 * @param maxZ
-	 * @param maxY
 	 */
-	public void fill(int minX, int maxX, int minZ, int maxZ, int minY, int maxY)
+	public void fill(int minX, int maxX, int minZ, int maxZ)
 	{
-		adjustBoundsIfNecessary(minX, maxX, minZ, maxZ, minY, maxY);
+		adjustBoundsIfNecessary(minX, maxX, minZ, maxZ);
 		
-		int y;
 		int z;
 		int x;
 		
 		int index;
 		
-		for (y = minY; y <= maxY; y++)
+		for (z = minZ; z <= maxZ; z++)
 		{
-			for (z = minZ; z <= maxZ; z++)
-			{
-				index = getIndex(minX, z, y);
-				for (x = minX; x <= maxX; x++) 
-				{	
-					blocks.set(index++);
-				}
+			index = getIndex(minX, z);
+			for (x = minX; x <= maxX; x++) 
+			{	
+				blocks.set(index++);
 			}
 		}
 	}
@@ -313,31 +266,25 @@ public class BitRegion3D
 	 * @param blocksToFill
 	 * @param minX
 	 * @param minZ
-	 * @param minY
 	 * @param maxX
 	 * @param maxZ
-	 * @param maxY
 	 */
-	public void fill(BitSet blocksToFill, int minX, int maxX, int minZ, int maxZ, int minY, int maxY)
+	public void fill(BitSet blocksToFill, int minX, int maxX, int minZ, int maxZ)
 	{
-		adjustBoundsIfNecessary(minX, maxX, minZ, maxZ, minY, maxY);
+		adjustBoundsIfNecessary(minX, maxX, minZ, maxZ);
 		
-		int y;
 		int z;
 		int x;
 		
 		int index1;
 		int index2 = 0;
 		
-		for (y = minY; y <= maxY; y++)
+		for (z = minZ; z <= maxZ; z++)
 		{
-			for (z = minZ; z <= maxZ; z++)
-			{
-				index1 = getIndex(minX, z, y);
-				for (x = minX; x <= maxX; x++) 
-				{	
-					if (blocksToFill.get(index2++)) blocks.set(index1++);
-				}
+			index1 = getIndex(minX, z);
+			for (x = minX; x <= maxX; x++) 
+			{	
+				if (blocksToFill.get(index2++)) blocks.set(index1++);
 			}
 		}
 	}
@@ -347,8 +294,6 @@ public class BitRegion3D
 	/*-------------------------------------
 		OVERLOADS : clear()
 	-------------------------------------*/
-	
-	
 	/**
 	 * 
 	 */
@@ -362,11 +307,10 @@ public class BitRegion3D
 	 * 
 	 * @param x
 	 * @param z
-	 * @param y
 	 */
-	public void clear(int x, int z, int y)
+	public void clear(int x, int z)
 	{
-		blocks.clear(getIndex(x, z, y));
+		blocks.clear(getIndex(x, z));
 	}
 	
 	
@@ -375,28 +319,22 @@ public class BitRegion3D
 	 * 
 	 * @param minX
 	 * @param minZ
-	 * @param minY
 	 * @param maxX
 	 * @param maxZ
-	 * @param maxY
 	 */
-	public void clear(int minX, int maxX, int minZ, int maxZ, int minY, int maxY)
+	public void clear(int minX, int maxX, int minZ, int maxZ)
 	{
-		int y;
 		int z;
 		int x;
 		
 		int index;
 		
-		for (y = minY; y <= maxY; y++)
+		for (z = minZ; z <= maxZ; z++)
 		{
-			for (z = minZ; z <= maxZ; z++)
-			{
-				index = getIndex(minX, z, y);
-				for (x = minX; x <= maxX; x++) 
-				{	
-					blocks.clear(index++);
-				}
+			index = getIndex(minX, z);
+			for (x = minX; x <= maxX; x++) 
+			{	
+				blocks.clear(index++);
 			}
 		}
 	}
@@ -407,29 +345,23 @@ public class BitRegion3D
 	 * @param blocksToClear
 	 * @param minX
 	 * @param minZ
-	 * @param minY
 	 * @param maxX
 	 * @param maxZ
-	 * @param maxY
 	 */
-	public void clear(BitSet blocksToClear, int minX, int maxX, int minZ, int maxZ, int minY, int maxY)
+	public void clear(BitSet blocksToClear, int minX, int maxX, int minZ, int maxZ)
 	{
-		int y;
 		int z;
 		int x;
 		
 		int index1;
 		int index2 = 0;
 		
-		for (y = minY; y <= maxY; y++)
+		for (z = minZ; z <= maxZ; z++)
 		{
-			for (z = minZ; z <= maxZ; z++)
-			{
-				index1 = getIndex(minX, z, y);
-				for (x = minX; x <= maxX; x++) 
-				{	
-					if (blocksToClear.get(index2++)) blocks.clear(index1++);
-				}
+			index1 = getIndex(minX, z);
+			for (x = minX; x <= maxX; x++) 
+			{	
+				if (blocksToClear.get(index2++)) blocks.clear(index1++);
 			}
 		}
 	}

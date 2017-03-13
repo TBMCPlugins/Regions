@@ -28,7 +28,7 @@ import java.util.BitSet;
  * @author Kevin Mathewson
  *
  */
-public abstract class Tree 
+public abstract class Tree extends BitRegionUtil
 {
 	/**
 	 * Tree node containing a boolean and an array of sub-nodes
@@ -58,7 +58,24 @@ public abstract class Tree
 		{
 			Node[] array = new Node[length];
 			for (int i = 0; i < length; i++)
+			{
 				array[i] = new Node(false);
+			}
+			return array;
+		}
+		
+		/**
+		 * Returns an array containing the given number of childless full nodes
+		 * 
+		 * @param length	desired size of array
+		 */
+		public static Node[] fullNodeArray(int length)
+		{
+			Node[] array = new Node[length];
+			for (int i = 0; i < length; i++)
+			{
+				array[i] = new Node(true);
+			}
 			return array;
 		}
 	}
@@ -443,33 +460,6 @@ public abstract class Tree
 		REMOVE VOLUME
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
-	
-	
-	/**
-	 * 
-	 */
-	public void trimAsNeededOLD() //TODO replace with abstract, adjust bounds
-	{
-		outerloop:
-		while (true)
-		{
-			for (Node child1 : root.children)
-			{
-				if (child1.children != null)
-				{
-					for (Node child2 : root.children)
-					{
-						if (child2.children != null)
-						{
-							break outerloop;
-						}
-					}
-					root.children = child1.children;
-					break;
-				}
-			}
-		}
-	}
 	
 	
 	/**
