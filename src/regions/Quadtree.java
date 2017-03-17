@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.BitSet;
 
+import regions.BitRegionUtil._3D;
 import regions.Tree.Node;
 
 public class Quadtree extends Tree
@@ -84,7 +85,7 @@ public class Quadtree extends Tree
 	----------------------------------------------------------------------------*/
 	
 	@Override
-	public boolean contains(int... coords)
+	public boolean testFor(int... coords)
 	{
 		if (coords[0] < min[0] || coords[0] >= max[0] ||
 			coords[1] < min[1] || coords[1] >= max[1]
@@ -120,9 +121,15 @@ public class Quadtree extends Tree
 	}
 	
 	
-	/*----------------------------------------------------------------------------
+	/*----------------------------------------------------------------------------TODO
 	------------------------------------------------------------------------------
 		contains() BOUNDED SELECTION
+	------------------------------------------------------------------------------
+	----------------------------------------------------------------------------*/
+	
+	/*----------------------------------------------------------------------------TODO
+	------------------------------------------------------------------------------
+		contains() COMPLEX BOUNDED SELECTION
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
 	
@@ -166,7 +173,6 @@ public class Quadtree extends Tree
 			xMarginHalf = xMargin / 2,
 			zMarginHalf = zMargin / 2;
 		
-		
 		xMin += xMarginHalf;
 		zMin += zMarginHalf;
 		xMax += xMarginHalf;
@@ -174,13 +180,24 @@ public class Quadtree extends Tree
 		if (xMargin % 2 == 1) if (xMin - xMinPercent > xMax - xMaxPercent) xMin++; else xMax++;
 		if (zMargin % 2 == 1) if (zMin - zMinPercent > zMax - zMaxPercent) zMin++; else zMax++;
 		
-		{
-			int sideLength = max[0] - min[0];
-			min[0] -= (sideLength * xMin);
-			min[1] -= (sideLength * zMin);
-			max[0] += (sideLength * xMax);
-			max[1] += (sideLength * zMax);
-		}
+		{int sideLength = max[0] - min[0];
+		min[0] -= (sideLength * xMin);
+		min[1] -= (sideLength * zMin);
+		max[0] += (sideLength * xMax);
+		max[1] += (sideLength * zMax);}
+		
+		/* child index:
+			
+			X         →         X
+		  Z	╔═════════╦═════════╗
+			║         ║         ║
+			║    0    ║    1    ║
+			║         ║         ║
+		  ↓	╠═════════╬═════════╣
+			║         ║         ║
+			║    2    ║    3    ║
+			║         ║         ║
+		  Z	╚═════════╩═════════╝*/
 		
 		int index;
 		Node[] children;
@@ -482,40 +499,6 @@ public class Quadtree extends Tree
 	/**
 	 * 
 	 * @param node
-	 * @param node_minX
-	 * @param node_minZ
-	 * @param node_maxX
-	 * @param node_maxZ
-	 * @param sel_minX
-	 * @param sel_minZ
-	 * @param sel_maxX
-	 * @param sel_maxZ
-	 * @param blocks
-	 * @return
-	 */
-	protected static boolean attemptAdd(Node node,
-										int node_minX, int node_minZ, int node_maxX, int node_maxZ, 
-										int sel_minX,  int sel_minZ,  int sel_maxX,  int sel_maxZ,
-										BitSet blocks
-										)
-	{
-		int partial = _2D.compareRegion(node_minX, node_minZ, node_maxX, node_maxZ, 
-										sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
-									  	blocks
-										);
-		
-		if (partial == 0) return false;
-		if (partial == 1) return true;
-		
-		node.full = true;
-		node.children = null;
-		return true;
-	}
-	
-	
-	/**
-	 * 
-	 * @param node
 	 * @param half
 	 * @param node_minX
 	 * @param node_minZ
@@ -535,13 +518,23 @@ public class Quadtree extends Tree
 	{
 		if (node.full ||
 			node_minX >= sel_maxX || node_maxX <= sel_minX || 
-			node_minZ >= sel_maxZ || node_maxZ <= sel_minZ ||
-			attemptAdd(node,
-					   node_minX, node_minZ, node_maxX, node_maxZ, 
-					   sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
-					   blocks
-					   ))
+			node_minZ >= sel_maxZ || node_maxZ <= sel_minZ
+			)
 			return;
+		
+		
+		switch (_2D.compareRegion(	node_minX, node_minZ, node_maxX, node_maxZ,
+									sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+									blocks
+									))
+		{
+			case 0 : break;					//	some blocks added
+			case 1 : return;				//	no blocks added
+			case 2 : node.full = true;		//	all blocks added
+					 node.children = null;
+					 return;
+		}
+		
 		
 		if (node.children == null) node.children = Node.emptyNodeArray(4);
 		
@@ -942,13 +935,23 @@ public class Quadtree extends Tree
 	{
 		if ((!node.full && node.children == null) ||
 			node_minX >= sel_maxX || node_maxX <= sel_minX || 
-			node_minZ >= sel_maxZ || node_maxZ <= sel_minZ ||
-			attemptRemove(node,
-						  node_minX, node_minZ, node_maxX, node_maxZ, 
-						  sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
-						  blocks
-						  ))
+			node_minZ >= sel_maxZ || node_maxZ <= sel_minZ
+			)
 			return;
+		
+		
+		switch (_2D.compareRegion(	node_minX, node_minZ, node_maxX, node_maxZ,
+									sel_minX,  sel_minZ,  sel_maxX,  sel_maxZ,
+									blocks
+									))
+		{
+			case 0 : break;					//	some blocks removed
+			case 1 : return;				//	no blocks removed
+			case 2 : node.full = false;		//	all blocks removed
+					 node.children = null;
+					 return;
+		}
+		
 		
 		if (node.children == null) node.children = Node.fullNodeArray(4);
 		

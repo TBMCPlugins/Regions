@@ -162,8 +162,7 @@ public class BitRegionUtil
 		 * @param blocks
 		 * @return
 		 */
-		public static int compareRegion(int minX1, int minZ1, 
-										int maxX1, int maxZ1, 
+		public static int compareRegion(int minX1, int minZ1, int maxX1, int maxZ1, 
 										int maxX2, int maxZ2, 
 										BitSet blocks
 										)
@@ -370,8 +369,7 @@ public class BitRegionUtil
 		 * @param blocks
 		 * @return
 		 */
-		public static int compareRegion(int minX1, int minZ1, int minY1, 
-										int maxX1, int maxZ1, int maxY1,
+		public static int compareRegion(int minX1, int minZ1, int minY1, int maxX1, int maxZ1, int maxY1,
 										int maxX2, int maxZ2, int maxY2,
 										BitSet blocks
 										)

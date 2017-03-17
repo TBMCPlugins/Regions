@@ -306,7 +306,7 @@ public abstract class Tree extends BitRegionUtil
 	
 	
 	/**
-	 * 
+	 * TODO
 	 * 
 	 * @param file			The source file, and save destination, for this Tree
 	 * @param blocks		BitSet representing all <tt>true</tt> points in the given volume
@@ -359,6 +359,7 @@ public abstract class Tree extends BitRegionUtil
 		OVERLOADS : nextPowerOfTwo()
 	-------------------------------------*/
 	/**
+	 * TODO
 	 * 
 	 * @param a
 	 * @return
@@ -369,6 +370,7 @@ public abstract class Tree extends BitRegionUtil
 	}
 	
 	/**
+	 * TODO
 	 * 
 	 * @param a
 	 * @param b
@@ -380,6 +382,7 @@ public abstract class Tree extends BitRegionUtil
 	}
 	
 	/**
+	 * TODO
 	 * 
 	 * @param a
 	 * @param b
@@ -405,7 +408,7 @@ public abstract class Tree extends BitRegionUtil
 	 * @param coords
 	 * @return
 	 */
-	public abstract boolean contains(int... coords);
+	public abstract boolean testFor(int... coords);
 	
 	
 	/*----------------------------------------------------------------------------

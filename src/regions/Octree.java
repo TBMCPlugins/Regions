@@ -87,7 +87,7 @@ public class Octree extends Tree
 
 	
 	@Override
-	public boolean contains(int... coords)
+	public boolean testFor(int... coords)
 	{
 		if (coords[0] < min[0] || coords[0] >= max[0] ||
 			coords[1] < min[1] || coords[1] >= max[1] ||
@@ -176,7 +176,6 @@ public class Octree extends Tree
 			zMarginHalf = zMargin / 2,
 			yMarginHalf = yMargin / 2;
 		
-		
 		xMin += xMarginHalf;
 		zMin += zMarginHalf;
 		yMin += yMarginHalf;
@@ -187,14 +186,13 @@ public class Octree extends Tree
 		if (zMargin % 2 == 1) if (zMin - zMinPercent > zMax - zMaxPercent) zMin++; else zMax++;
 		if (yMargin % 2 == 1) if (yMin - yMinPercent > yMax - yMaxPercent) yMin++; else yMax++;
 		
-		int sideLength = max[0] - min[0];
+		{int sideLength = max[0] - min[0];
 		min[0] -= (sideLength * xMin);
 		min[1] -= (sideLength * zMin);
 		min[2] -= (sideLength * yMin);
 		max[0] += (sideLength * xMax);
 		max[1] += (sideLength * zMax);
-		max[2] += (sideLength * yMax);
-		
+		max[2] += (sideLength * yMax);}
 		
 		int index;
 		Node[] children;
@@ -573,44 +571,6 @@ public class Octree extends Tree
 	/**
 	 * 
 	 * @param node
-	 * @param node_minX
-	 * @param node_minZ
-	 * @param node_minY
-	 * @param node_maxX
-	 * @param node_maxZ
-	 * @param node_maxY
-	 * @param sel_minX
-	 * @param sel_minZ
-	 * @param sel_minY
-	 * @param sel_maxX
-	 * @param sel_maxZ
-	 * @param sel_maxY
-	 * @param blocks
-	 * @return
-	 */
-	protected static boolean attemptAdd(Node node,
-										int node_minX, int node_minZ, int node_minY, int node_maxX, int node_maxZ, int node_maxY,
-										int sel_minX,  int sel_minZ,  int sel_minY,  int sel_maxX,  int sel_maxZ,  int sel_maxY,
-										BitSet blocks
-										)
-	{
-		int partial = _3D.compareRegion(node_minX, node_minZ, node_minY, node_maxX, node_maxZ, node_maxY,
-										sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY,
-										blocks
-										);
-		
-		if (partial == 0) return false;
-		if (partial == 1) return true;
-		
-		node.full = false;
-		node.children = null;
-		return true;
-	}
-	
-	
-	/**
-	 * 
-	 * @param node
 	 * @param half
 	 * @param node_minX
 	 * @param node_minZ
@@ -635,13 +595,23 @@ public class Octree extends Tree
 		if (node.full ||
 			node_minX >= sel_maxX || node_maxX <= sel_minX || 
 			node_minZ >= sel_maxZ || node_maxZ <= sel_minZ ||
-			node_minY >= sel_maxY || node_maxY <= sel_minY ||
-			attemptAdd(node,
-					   node_minX, node_minZ, node_minY, node_maxX, node_maxZ, node_maxY,
-					   sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY,
-					   blocks
-					   ))
+			node_minY >= sel_maxY || node_maxY <= sel_minY
+			)
 			return;
+		
+		
+		switch (_3D.compareRegion(	node_minX, node_minZ, node_minY, node_maxX, node_maxZ, node_maxY,
+									sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY,
+									blocks
+									))
+		{
+			case 0 : break;					//	some blocks added
+			case 1 : return;				//	no blocks added
+			case 2 : node.full = true;		//	all blocks added
+					 node.children = null;
+					 return;
+		}
+		
 		
 		if (node.children == null) 
 			node.children = Node.emptyNodeArray(8);
@@ -1126,49 +1096,11 @@ public class Octree extends Tree
 	
 	
 	
-	/*----------------------------------------------------------------------------
-	------------------------------------------------------------------------------
+	/*----------------------------------------------------------------------------TODO avoid redundant block checking
+	------------------------------------------------------------------------------(checking all parent blocks, then checking all children blocks)
 		remove() COMPLEX BOUNDED SELECTION
 	------------------------------------------------------------------------------
 	----------------------------------------------------------------------------*/
-	
-	
-	/**
-	 * 
-	 * @param node
-	 * @param node_minX
-	 * @param node_minZ
-	 * @param node_minY
-	 * @param node_maxX
-	 * @param node_maxZ
-	 * @param node_maxY
-	 * @param sel_minX
-	 * @param sel_minZ
-	 * @param sel_minY
-	 * @param sel_maxX
-	 * @param sel_maxZ
-	 * @param sel_maxY
-	 * @param blocks
-	 * @return
-	 */
-	protected static boolean attemptRemove(Node node,
-										   int node_minX, int node_minZ, int node_minY, int node_maxX, int node_maxZ, int node_maxY,
-										   int sel_minX,  int sel_minZ,  int sel_minY,  int sel_maxX,  int sel_maxZ,  int sel_maxY,
-										   BitSet blocks
-										   )
-	{
-		int partial = _3D.compareRegion(node_minX, node_minZ, node_minY, node_maxX, node_maxZ, node_maxY,
-										sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY,
-									  	blocks
-										);
-		
-		if (partial == 0) return false;
-		if (partial == 1) return true;
-		
-		node.full = false;
-		node.children = null;
-		return true;
-	}
 	
 	
 	/**
@@ -1197,13 +1129,23 @@ public class Octree extends Tree
 		if ((!node.full && node.children == null) ||
 			node_minX >= sel_maxX || node_maxX <= sel_minX || 
 			node_minZ >= sel_maxZ || node_maxZ <= sel_minZ ||
-			node_minY >= sel_maxY || node_maxY <= sel_minY ||
-			attemptRemove(node,
-						  node_minX, node_minZ, node_minY, node_maxX, node_maxZ, node_maxY,
-						  sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY,
-						  blocks
-						  ))
+			node_minY >= sel_maxY || node_maxY <= sel_minY
+			)
 			return;
+		
+		
+		switch (_3D.compareRegion(	node_minX, node_minZ, node_minY, node_maxX, node_maxZ, node_maxY,
+									sel_minX,  sel_minZ,  sel_minY,  sel_maxX,  sel_maxZ,  sel_maxY,
+									blocks
+									))
+		{
+			case 0 : break;					//	some blocks removed
+			case 1 : return;				//	no blocks removed
+			case 2 : node.full = false;		//	all blocks removed
+					 node.children = null;
+					 return;
+		}
+		
 		
 		if (node.full) 
 		{
